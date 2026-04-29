@@ -1,6 +1,6 @@
 let googleMapsPromise;
 
-const GOOGLE_MAPS_SCRIPT_ID = 'petconnect-google-maps-script';
+const GOOGLE_MAPS_SCRIPT_ID = 'vetconnect-google-maps-script';
 export const DEFAULT_MAP_CENTER = { lat: 23.8103, lng: 90.4125 };
 export const GOOGLE_MAPS_MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID';
 
@@ -30,7 +30,7 @@ export const loadGoogleMaps = () => {
       return;
     }
 
-    const callbackName = '__petconnectGoogleMapsInit';
+    const callbackName = '__vetconnectGoogleMapsInit';
     window[callbackName] = () => {
       resolve(window.google);
       delete window[callbackName];

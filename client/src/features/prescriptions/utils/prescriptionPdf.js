@@ -13,7 +13,7 @@ export const downloadPrescriptionPdf = async (prescription) => {
   const qrDataUrl = await QRCode.toDataURL(verifyUrl);
 
   doc.setFontSize(18);
-  doc.text('PetConnect Digital Prescription', 14, 18);
+  doc.text('VetConnect Digital Prescription', 14, 18);
 
   doc.setFontSize(10);
   doc.text(`Verification Code: ${prescription.verificationCode}`, 14, 26);

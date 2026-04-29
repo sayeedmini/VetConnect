@@ -1,5 +1,5 @@
-export const TOKEN_KEY = 'petconnect_token';
-export const USER_KEY = 'petconnect_user';
+export const TOKEN_KEY = 'vetconnect_token';
+export const USER_KEY = 'vetconnect_user';
 
 export const saveAuth = (token, user) => {
   localStorage.setItem(TOKEN_KEY, token);

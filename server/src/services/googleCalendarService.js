@@ -38,7 +38,7 @@ const isCalendarConfigured = () =>
 
 const getFallbackCalendarLink = ({ appointment, clinic }) =>
   buildGoogleCalendarUrl({
-    title: `Vet appointment - ${clinic?.clinicName || 'PetConnect Clinic'}`,
+    title: `Vet appointment - ${clinic?.clinicName || 'VetConnect Clinic'}`,
     startTime: appointment.startTime,
     endTime: appointment.endTime,
     details: [
@@ -70,7 +70,7 @@ const buildEventPayload = ({ appointment, clinic }) => {
   const end = new Date(appointment.endTime);
 
   return {
-    summary: `Vet appointment - ${clinic?.clinicName || 'PetConnect Clinic'}`,
+    summary: `Vet appointment - ${clinic?.clinicName || 'VetConnect Clinic'}`,
     location: clinic?.address || '',
     description: [
       `Pet name: ${appointment.petName || ''}`,
@@ -78,7 +78,7 @@ const buildEventPayload = ({ appointment, clinic }) => {
       `Reason: ${appointment.reason || 'General checkup'}`,
       `Notes: ${appointment.notes || 'None'}`,
       `Appointment ID: ${appointment._id || ''}`,
-      `Booked via PetConnect`,
+      `Booked via VetConnect`,
     ].join('\n'),
     start: {
       dateTime: start.toISOString(),
@@ -93,9 +93,9 @@ const buildEventPayload = ({ appointment, clinic }) => {
     },
     extendedProperties: {
       private: {
-        petconnectAppointmentId: String(appointment._id || ''),
-        petconnectClinicId: String(appointment.clinic || ''),
-        petconnectPetOwnerId: String(appointment.petOwner || ''),
+        vetconnectAppointmentId: String(appointment._id || ''),
+        vetconnectClinicId: String(appointment.clinic || ''),
+        vetconnectPetOwnerId: String(appointment.petOwner || ''),
       },
     },
   };

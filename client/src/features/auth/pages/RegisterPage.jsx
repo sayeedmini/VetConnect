@@ -127,7 +127,7 @@ function RegisterPage() {
             fontSize: '14px',
           }}
         >
-          Sign up to continue with PetConnect
+          Sign up to continue with VetConnect
         </p>
 
         <form onSubmit={handleSubmit}>

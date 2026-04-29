@@ -156,7 +156,7 @@ function Home() {
 
       <section className="mt-8 rounded-[32px] border border-slate-200 bg-white px-6 py-10 shadow-[0_18px_60px_rgba(15,23,42,0.06)] lg:px-10">
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="font-display text-3xl font-bold text-[#002045] sm:text-4xl">Why choose PetConnect</h2>
+          <h2 className="font-display text-3xl font-bold text-[#002045] sm:text-4xl">Why choose VetConnect</h2>
           <p className="mt-4 text-base leading-8 text-slate-600">
             A seamless clinical-friendly experience that helps pet owners move from discovery to
             booking to records without friction.

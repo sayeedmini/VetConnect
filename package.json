@@ -1,8 +1,8 @@
 {
-  "name": "petconnect",
+  "name": "vetconnect",
   "private": true,
   "version": "1.0.0",
-  "description": "PetConnect MERN project",
+  "description": "VetConnect MERN project",
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "server": "npm run dev --prefix server",

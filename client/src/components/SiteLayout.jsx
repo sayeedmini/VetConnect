@@ -55,7 +55,7 @@ function SiteLayout({
               P
             </div>
             <div>
-              <div className="font-display text-xl font-extrabold tracking-tight text-[#002045]">PetConnect</div>
+              <div className="font-display text-xl font-extrabold tracking-tight text-[#002045]">VetConnect</div>
               <div className="text-xs text-slate-500">Trusted veterinary care platform</div>
             </div>
           </Link>
@@ -131,7 +131,7 @@ function SiteLayout({
       <footer className="mt-12 border-t border-slate-200 bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-5 lg:px-8">
           <div className="lg:col-span-2">
-            <div className="font-display text-2xl font-extrabold text-[#002045]">PetConnect</div>
+            <div className="font-display text-2xl font-extrabold text-[#002045]">VetConnect</div>
             <p className="mt-3 max-w-md text-sm leading-7 text-slate-600">
               Connecting pet owners with trusted veterinary clinics, seamless appointment booking,
               digital prescriptions, and verified care records.
@@ -163,7 +163,7 @@ function SiteLayout({
           </div>
         </div>
         <div className="border-t border-slate-200 px-4 py-4 text-center text-sm text-slate-500">
-          © 2026 PetConnect. All rights reserved.
+          © 2026 VetConnect. All rights reserved.
         </div>
       </footer>
     </div>

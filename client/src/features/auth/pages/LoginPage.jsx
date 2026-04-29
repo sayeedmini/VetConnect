@@ -40,7 +40,7 @@ function LoginPage() {
             <Link to="/" className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#002045] text-lg font-black text-white">P</div>
               <div>
-                <div className="font-display text-xl font-extrabold text-[#002045]">PetConnect</div>
+                <div className="font-display text-xl font-extrabold text-[#002045]">VetConnect</div>
                 <div className="text-xs text-slate-500">Smarter pet care access</div>
               </div>
             </Link>
