@@ -2,7 +2,7 @@ const { ensureKeyRing, listManagedKeys, rotateKey } = require('../security/keyMa
 
 const getPublicKeys = async (req, res) => {
   try {
-    const keyRing = ensureKeyRing();
+    const keyRing = await ensureKeyRing();
     const data = Object.entries(keyRing.active).map(([algorithm, keyId]) => {
       const key = keyRing.keys[keyId];
       return {
@@ -51,7 +51,7 @@ const rotateManagedKey = async (req, res) => {
       });
     }
 
-    const nextKey = rotateKey(algorithm);
+    const nextKey = await rotateKey(algorithm);
 
     return res.status(200).json({
       success: true,

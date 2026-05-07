@@ -1,55 +1,68 @@
-const fs = require('fs');
-const path = require('path');
-const { generateKeyPair: generateRsaKeyPair, encryptText: rsaEncryptText, decryptText: rsaDecryptText } = require('./rsa');
+const {
+  generateKeyPair: generateRsaKeyPair,
+  encryptText: rsaEncryptText,
+  decryptText: rsaDecryptText,
+} = require('./rsa');
 const { generateKeyPair: generateElgamalKeyPair } = require('./elgamal');
-
-const STORAGE_DIR = path.join(__dirname, '..', '..', 'storage');
-const BOOTSTRAP_PATH = path.join(STORAGE_DIR, 'crypto-bootstrap.json');
-const KEYRING_PATH = path.join(STORAGE_DIR, 'crypto-keyring.json');
+const SecurityState = require('../models/SecurityState');
 
 let cachedBootstrap = null;
 let cachedKeyRing = null;
+let initializationPromise = null;
 
-const ensureStorageDir = () => {
-  if (!fs.existsSync(STORAGE_DIR)) {
-    fs.mkdirSync(STORAGE_DIR, { recursive: true });
+const writeState = async (kind, payload) => {
+  await SecurityState.findOneAndUpdate(
+    { kind },
+    { kind, payload },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+};
+
+const readState = async (kind) => {
+  const state = await SecurityState.findOne({ kind }).lean();
+  return state?.payload || null;
+};
+
+const ensureKeyManagementReady = () => {
+  if (!cachedBootstrap || !cachedKeyRing) {
+    throw new Error('Key management is not initialized');
   }
 };
 
-const readJson = (targetPath) => JSON.parse(fs.readFileSync(targetPath, 'utf8'));
-
-const writeJson = (targetPath, value) => {
-  fs.writeFileSync(targetPath, JSON.stringify(value, null, 2), 'utf8');
+const ensureBootstrapKeySync = () => {
+  ensureKeyManagementReady();
+  return cachedBootstrap;
 };
 
-const ensureBootstrapKey = () => {
-  ensureStorageDir();
-
+const ensureBootstrapKey = async () => {
   if (cachedBootstrap) {
     return cachedBootstrap;
   }
 
-  if (!fs.existsSync(BOOTSTRAP_PATH)) {
+  let bootstrap = await readState('bootstrap');
+
+  if (!bootstrap) {
     const bootstrapPair = generateRsaKeyPair(384);
-    writeJson(BOOTSTRAP_PATH, {
+    bootstrap = {
       version: 1,
       createdAt: new Date().toISOString(),
       publicKey: bootstrapPair.publicKey,
       privateKey: bootstrapPair.privateKey,
-    });
+    };
+    await writeState('bootstrap', bootstrap);
   }
 
-  cachedBootstrap = readJson(BOOTSTRAP_PATH);
+  cachedBootstrap = bootstrap;
   return cachedBootstrap;
 };
 
 const encryptPrivateKey = (privateKeyPayload) => {
-  const bootstrap = ensureBootstrapKey();
+  const bootstrap = ensureBootstrapKeySync();
   return rsaEncryptText(JSON.stringify(privateKeyPayload), bootstrap.publicKey);
 };
 
 const decryptPrivateKey = (encryptedPayload) => {
-  const bootstrap = ensureBootstrapKey();
+  const bootstrap = ensureBootstrapKeySync();
   return JSON.parse(rsaDecryptText(encryptedPayload, bootstrap.privateKey));
 };
 
@@ -80,30 +93,56 @@ const createInitialKeyRing = () => {
   };
 };
 
-const ensureKeyRing = () => {
-  ensureBootstrapKey();
+const ensureKeyRing = async () => {
+  await ensureBootstrapKey();
 
   if (cachedKeyRing) {
     return cachedKeyRing;
   }
 
-  if (!fs.existsSync(KEYRING_PATH)) {
-    writeJson(KEYRING_PATH, createInitialKeyRing());
+  let keyRing = await readState('keyring');
+
+  if (!keyRing) {
+    keyRing = createInitialKeyRing();
+    await writeState('keyring', keyRing);
   }
 
-  cachedKeyRing = readJson(KEYRING_PATH);
+  cachedKeyRing = keyRing;
   return cachedKeyRing;
 };
 
-const saveKeyRing = (keyRing) => {
+const initializeKeyManagement = async () => {
+  if (cachedBootstrap && cachedKeyRing) {
+    return {
+      bootstrap: cachedBootstrap,
+      keyRing: cachedKeyRing,
+    };
+  }
+
+  if (!initializationPromise) {
+    initializationPromise = (async () => {
+      await ensureKeyRing();
+      return {
+        bootstrap: cachedBootstrap,
+        keyRing: cachedKeyRing,
+      };
+    })().finally(() => {
+      initializationPromise = null;
+    });
+  }
+
+  return initializationPromise;
+};
+
+const saveKeyRing = async (keyRing) => {
   cachedKeyRing = keyRing;
-  writeJson(KEYRING_PATH, keyRing);
+  await writeState('keyring', keyRing);
 };
 
 const getActiveKeyRecord = (algorithm) => {
-  const keyRing = ensureKeyRing();
-  const keyId = keyRing.active[algorithm];
-  return keyRing.keys[keyId] || null;
+  ensureKeyManagementReady();
+  const keyId = cachedKeyRing.active[algorithm];
+  return cachedKeyRing.keys[keyId] || null;
 };
 
 const getActiveKeyPair = (algorithm) => {
@@ -123,8 +162,8 @@ const getActiveKeyPair = (algorithm) => {
 };
 
 const getKeyPairById = (keyId) => {
-  const keyRing = ensureKeyRing();
-  const record = keyRing.keys[keyId];
+  ensureKeyManagementReady();
+  const record = cachedKeyRing.keys[keyId];
 
   if (!record) {
     throw new Error(`Key "${keyId}" was not found in the keyring`);
@@ -139,8 +178,8 @@ const getKeyPairById = (keyId) => {
   };
 };
 
-const rotateKey = (algorithm) => {
-  const keyRing = ensureKeyRing();
+const rotateKey = async (algorithm) => {
+  const keyRing = await ensureKeyRing();
   const activeRecord = getActiveKeyRecord(algorithm);
   const nextVersion = (activeRecord?.version || 0) + 1;
   const keyPair = algorithm === 'rsa' ? generateRsaKeyPair(384) : generateElgamalKeyPair();
@@ -156,14 +195,15 @@ const rotateKey = (algorithm) => {
 
   keyRing.keys[nextId] = createManagedKeyEntry(algorithm, keyPair, nextVersion);
   keyRing.active[algorithm] = nextId;
-  saveKeyRing(keyRing);
+  await saveKeyRing(keyRing);
 
   return getActiveKeyPair(algorithm);
 };
 
 const listManagedKeys = () => {
-  const keyRing = ensureKeyRing();
-  return Object.values(keyRing.keys).map((entry) => ({
+  ensureKeyManagementReady();
+
+  return Object.values(cachedKeyRing.keys).map((entry) => ({
     id: entry.id,
     algorithm: entry.algorithm,
     version: entry.version,
@@ -177,6 +217,7 @@ const listManagedKeys = () => {
 module.exports = {
   ensureBootstrapKey,
   ensureKeyRing,
+  initializeKeyManagement,
   getActiveKeyPair,
   getKeyPairById,
   rotateKey,

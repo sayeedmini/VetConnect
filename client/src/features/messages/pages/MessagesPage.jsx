@@ -129,6 +129,26 @@ function MessagesPage() {
   useEffect(() => {
     const socket = getMessageSocket();
 
+    if (socket) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      refreshConversationList(activeAppointmentRef.current);
+
+      if (activeAppointmentRef.current) {
+        refreshConversation(activeAppointmentRef.current);
+      }
+    }, 10000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [refreshConversation, refreshConversationList]);
+
+  useEffect(() => {
+    const socket = getMessageSocket();
+
     if (!socket) {
       return undefined;
     }

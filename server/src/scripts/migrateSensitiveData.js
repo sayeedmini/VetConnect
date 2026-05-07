@@ -8,7 +8,7 @@ const Message = require('../models/Message');
 const Prescription = require('../models/Prescription');
 const Review = require('../models/Review');
 const Post = require('../models/Post');
-const { ensureKeyRing } = require('../security/keyManagementService');
+const { initializeKeyManagement } = require('../security/keyManagementService');
 const { buildLookupDigest } = require('../security/secureField');
 const { normalizeEmail } = require('../services/userSecurityService');
 
@@ -137,8 +137,8 @@ const migratePosts = async () => {
 };
 
 const run = async () => {
-  ensureKeyRing();
   await connectDB();
+  await initializeKeyManagement();
 
   logStep('Migrated users', await migrateUsers());
   logStep('Migrated appointments', await migrateAppointments());

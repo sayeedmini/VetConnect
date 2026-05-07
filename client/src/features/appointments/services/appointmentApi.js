@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { getToken } from '../../auth/utils/auth';
+import { API_BASE_URL } from '../../../lib/runtimeConfig';
 
-const API_BASE_URL = 'http://localhost:5000/api/appointments';
+const APPOINTMENTS_API_BASE_URL = `${API_BASE_URL}/appointments`;
 
 const getAuthHeaders = () => {
   const token = getToken();
@@ -14,7 +15,7 @@ const getAuthHeaders = () => {
 };
 
 export const getAvailableSlots = async (clinicId, date, options = {}) => {
-  const response = await axios.get(`${API_BASE_URL}/available-slots`, {
+  const response = await axios.get(`${APPOINTMENTS_API_BASE_URL}/available-slots`, {
     params: {
       clinicId,
       date,
@@ -27,7 +28,7 @@ export const getAvailableSlots = async (clinicId, date, options = {}) => {
 };
 
 export const bookAppointment = async (payload) => {
-  const response = await axios.post(API_BASE_URL, payload, {
+  const response = await axios.post(APPOINTMENTS_API_BASE_URL, payload, {
     headers: getAuthHeaders(),
   });
 
@@ -35,7 +36,7 @@ export const bookAppointment = async (payload) => {
 };
 
 export const getMyAppointments = async (status = '') => {
-  const response = await axios.get(`${API_BASE_URL}/my`, {
+  const response = await axios.get(`${APPOINTMENTS_API_BASE_URL}/my`, {
     params: status ? { status } : {},
     headers: getAuthHeaders(),
   });
@@ -44,7 +45,7 @@ export const getMyAppointments = async (status = '') => {
 };
 
 export const getAppointmentById = async (id) => {
-  const response = await axios.get(`${API_BASE_URL}/${id}`, {
+  const response = await axios.get(`${APPOINTMENTS_API_BASE_URL}/${id}`, {
     headers: getAuthHeaders(),
   });
 
@@ -53,7 +54,7 @@ export const getAppointmentById = async (id) => {
 
 export const cancelAppointment = async (id) => {
   const response = await axios.patch(
-    `${API_BASE_URL}/${id}/cancel`,
+    `${APPOINTMENTS_API_BASE_URL}/${id}/cancel`,
     {},
     {
       headers: getAuthHeaders(),
@@ -64,7 +65,7 @@ export const cancelAppointment = async (id) => {
 };
 
 export const rescheduleAppointment = async (id, payload) => {
-  const response = await axios.patch(`${API_BASE_URL}/${id}/reschedule`, payload, {
+  const response = await axios.patch(`${APPOINTMENTS_API_BASE_URL}/${id}/reschedule`, payload, {
     headers: getAuthHeaders(),
   });
 
@@ -73,7 +74,7 @@ export const rescheduleAppointment = async (id, payload) => {
 
 export const completeAppointment = async (id) => {
   const response = await axios.patch(
-    `${API_BASE_URL}/${id}/complete`,
+    `${APPOINTMENTS_API_BASE_URL}/${id}/complete`,
     {},
     {
       headers: getAuthHeaders(),
