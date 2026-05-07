@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 import SiteLayout from './components/SiteLayout';
+import { AuthSessionProvider, useAuthSession } from './features/auth/context/AuthSessionContext';
 import ProtectedRoute from './features/auth/components/ProtectedRoute';
 import LoginPage from './features/auth/pages/LoginPage';
 import RegisterPage from './features/auth/pages/RegisterPage';
@@ -10,7 +11,6 @@ import RescheduleAppointmentPage from './features/appointments/pages/RescheduleA
 import MessagesPage from './features/messages/pages/MessagesPage';
 import PostsPage from './features/posts/pages/PostsPage';
 import ProfilePage from './features/profile/pages/ProfilePage';
-import { getUser, isLoggedIn } from './features/auth/utils/auth';
 import AppointmentPrescriptionPage from './features/prescriptions/pages/AppointmentPrescriptionPage';
 import PrescriptionHistoryPage from './features/prescriptions/pages/PrescriptionHistoryPage';
 import AddVetPage from './features/vets/pages/AddVetPage';
@@ -53,8 +53,7 @@ const clinicImageFallbacks = [
 ];
 
 function Home() {
-  const user = getUser();
-  const loggedIn = isLoggedIn();
+  const { user, isLoggedIn: loggedIn } = useAuthSession();
   const [clinics, setClinics] = useState([]);
   const [loadingClinics, setLoadingClinics] = useState(true);
 
@@ -248,96 +247,98 @@ function Home() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/vets" element={<VetListPage />} />
-        <Route path="/vets/:id" element={<VetDetailsPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/posts" element={<PostsPage />} />
-        <Route
-          path="/vets/add"
-          element={
-            <ProtectedRoute allowedRoles={['vet']}>
-              <AddVetPage />
-            </ProtectedRoute>
-          }
-        />
+    <AuthSessionProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/vets" element={<VetListPage />} />
+          <Route path="/vets/:id" element={<VetDetailsPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/posts" element={<PostsPage />} />
+          <Route
+            path="/vets/add"
+            element={
+              <ProtectedRoute allowedRoles={['vet']}>
+                <AddVetPage />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/vets/:id/edit"
-          element={
-            <ProtectedRoute allowedRoles={['vet', 'admin']}>
-              <EditVetPage />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/vets/:id/edit"
+            element={
+              <ProtectedRoute allowedRoles={['vet', 'admin']}>
+                <EditVetPage />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/vets/:clinicId/book"
-          element={
-            <ProtectedRoute allowedRoles={['petOwner', 'admin']}>
-              <BookAppointmentPage />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/vets/:clinicId/book"
+            element={
+              <ProtectedRoute allowedRoles={['petOwner', 'admin']}>
+                <BookAppointmentPage />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/appointments"
-          element={
-            <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
-              <MyAppointmentsPage />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/appointments"
+            element={
+              <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
+                <MyAppointmentsPage />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/appointments/:appointmentId/reschedule"
-          element={
-            <ProtectedRoute allowedRoles={['petOwner', 'admin']}>
-              <RescheduleAppointmentPage />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/appointments/:appointmentId/reschedule"
+            element={
+              <ProtectedRoute allowedRoles={['petOwner', 'admin']}>
+                <RescheduleAppointmentPage />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/appointments/:appointmentId/prescription"
-          element={
-            <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
-              <AppointmentPrescriptionPage />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/appointments/:appointmentId/prescription"
+            element={
+              <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
+                <AppointmentPrescriptionPage />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/messages"
-          element={
-            <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
-              <MessagesPage />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/messages"
+            element={
+              <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
+                <MessagesPage />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/prescriptions"
-          element={
-            <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
-              <PrescriptionHistoryPage />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+          <Route
+            path="/prescriptions"
+            element={
+              <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
+                <PrescriptionHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </AuthSessionProvider>
   );
 }
 

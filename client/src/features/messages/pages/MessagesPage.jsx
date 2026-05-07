@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import SiteLayout from '../../../components/SiteLayout';
 import { formatFriendlyDate } from '../../../utils/date';
-import { getUser } from '../../auth/utils/auth';
+import { useAuthSession } from '../../auth/context/AuthSessionContext';
 import {
   getConversationByAppointment,
   getMyConversations,
@@ -19,7 +19,7 @@ const formatMessageTime = (value) =>
   });
 
 function MessagesPage() {
-  const currentUser = getUser();
+  const { user: currentUser } = useAuthSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState([]);
   const [activeAppointmentId, setActiveAppointmentId] = useState(

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from '../../../lib/apiClient';
 import { getToken } from '../../auth/utils/auth';
 import { API_BASE_URL } from '../../../lib/runtimeConfig';
 
@@ -13,7 +13,7 @@ const getAuthHeaders = () => {
 };
 
 export const getPrescriptionByAppointment = async (appointmentId) => {
-  const response = await axios.get(`${API_BASE_URL}/prescriptions/appointments/${appointmentId}`, {
+  const response = await apiClient.get(`${API_BASE_URL}/prescriptions/appointments/${appointmentId}`, {
     headers: getAuthHeaders(),
   });
 
@@ -21,7 +21,7 @@ export const getPrescriptionByAppointment = async (appointmentId) => {
 };
 
 export const savePrescriptionByAppointment = async (appointmentId, payload) => {
-  const response = await axios.put(
+  const response = await apiClient.put(
     `${API_BASE_URL}/prescriptions/appointments/${appointmentId}`,
     payload,
     {
@@ -33,7 +33,7 @@ export const savePrescriptionByAppointment = async (appointmentId, payload) => {
 };
 
 export const getMyPrescriptions = async (petName = '') => {
-  const response = await axios.get(`${API_BASE_URL}/prescriptions/my`, {
+  const response = await apiClient.get(`${API_BASE_URL}/prescriptions/my`, {
     params: petName ? { petName } : {},
     headers: getAuthHeaders(),
   });

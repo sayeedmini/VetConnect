@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
-import { getUser } from '../../auth/utils/auth';
+import { useAuthSession } from '../../auth/context/AuthSessionContext';
 
 const clinicCardImage =
   '/clinic-default.svg';
 
 function VetCard({ vet, index = 0 }) {
-  const currentUser = getUser();
+  const { user: currentUser } = useAuthSession();
   const clinic = vet?.clinic || vet || {};
   const services = clinic.servicesOffered || [];
   const ratingValue =

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import SiteLayout from '../../../components/SiteLayout';
-import { getUser } from '../../auth/utils/auth';
+import { useAuthSession } from '../../auth/context/AuthSessionContext';
 import ClinicReviewsPanel from '../../reviews/components/ClinicReviewsPanel';
 import { deleteVet, getVetById } from '../services/vetApi';
 
@@ -21,7 +21,7 @@ function VetDetailsPage() {
   const navigate = useNavigate();
   const [vet, setVet] = useState(null);
   const [loading, setLoading] = useState(true);
-  const currentUser = getUser();
+  const { user: currentUser } = useAuthSession();
 
   useEffect(() => {
     const fetchVet = async () => {

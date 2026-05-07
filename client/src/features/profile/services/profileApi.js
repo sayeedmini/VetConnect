@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from '../../../lib/apiClient';
 import { getToken } from '../../auth/utils/auth';
 import { API_BASE_URL } from '../../../lib/runtimeConfig';
 
@@ -10,7 +10,7 @@ const getAuthHeaders = () => {
 };
 
 export const getMyProfile = async () => {
-  const response = await axios.get(`${PROFILE_API_BASE_URL}/me`, {
+  const response = await apiClient.get(`${PROFILE_API_BASE_URL}/me`, {
     headers: getAuthHeaders(),
   });
 
@@ -18,7 +18,7 @@ export const getMyProfile = async () => {
 };
 
 export const updateMyProfile = async (payload) => {
-  const response = await axios.put(`${PROFILE_API_BASE_URL}/me`, payload, {
+  const response = await apiClient.put(`${PROFILE_API_BASE_URL}/me`, payload, {
     headers: getAuthHeaders(),
   });
 

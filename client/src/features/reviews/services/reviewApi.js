@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from '../../../lib/apiClient';
 import { getToken } from '../../auth/utils/auth';
 import { API_BASE_URL } from '../../../lib/runtimeConfig';
 
@@ -13,7 +13,7 @@ const getAuthHeaders = () => {
 };
 
 export const getClinicReviews = async (clinicId, includeRejected = false) => {
-  const response = await axios.get(`${API_BASE_URL}/clinics/${clinicId}/reviews`, {
+  const response = await apiClient.get(`${API_BASE_URL}/clinics/${clinicId}/reviews`, {
     params: includeRejected ? { includeRejected: true } : {},
     headers: includeRejected ? getAuthHeaders() : {},
   });
@@ -22,7 +22,7 @@ export const getClinicReviews = async (clinicId, includeRejected = false) => {
 };
 
 export const getMyClinicReview = async (clinicId) => {
-  const response = await axios.get(`${API_BASE_URL}/clinics/${clinicId}/reviews/me`, {
+  const response = await apiClient.get(`${API_BASE_URL}/clinics/${clinicId}/reviews/me`, {
     headers: getAuthHeaders(),
   });
 
@@ -30,7 +30,7 @@ export const getMyClinicReview = async (clinicId) => {
 };
 
 export const createClinicReview = async (clinicId, payload) => {
-  const response = await axios.post(`${API_BASE_URL}/clinics/${clinicId}/reviews`, payload, {
+  const response = await apiClient.post(`${API_BASE_URL}/clinics/${clinicId}/reviews`, payload, {
     headers: getAuthHeaders(),
   });
 
@@ -38,7 +38,7 @@ export const createClinicReview = async (clinicId, payload) => {
 };
 
 export const updateReview = async (reviewId, payload) => {
-  const response = await axios.patch(`${API_BASE_URL}/reviews/${reviewId}`, payload, {
+  const response = await apiClient.patch(`${API_BASE_URL}/reviews/${reviewId}`, payload, {
     headers: getAuthHeaders(),
   });
 
@@ -46,7 +46,7 @@ export const updateReview = async (reviewId, payload) => {
 };
 
 export const moderateReview = async (reviewId, payload) => {
-  const response = await axios.patch(`${API_BASE_URL}/reviews/${reviewId}/moderate`, payload, {
+  const response = await apiClient.patch(`${API_BASE_URL}/reviews/${reviewId}/moderate`, payload, {
     headers: getAuthHeaders(),
   });
 

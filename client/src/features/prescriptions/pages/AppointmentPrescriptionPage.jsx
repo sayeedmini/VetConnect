@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { getAppointmentById } from '../../appointments/services/appointmentApi';
 import { getPrescriptionByAppointment, savePrescriptionByAppointment } from '../services/prescriptionApi';
 import { downloadPrescriptionPdf } from '../utils/prescriptionPdf';
-import { getUser } from '../../auth/utils/auth';
+import { useAuthSession } from '../../auth/context/AuthSessionContext';
 import SiteLayout from '../../../components/SiteLayout';
 import { formatFriendlyDate } from '../../../utils/date';
 
@@ -17,7 +17,7 @@ const createMedicineRow = () => ({
 
 function AppointmentPrescriptionPage() {
   const { appointmentId } = useParams();
-  const currentUser = getUser();
+  const { user: currentUser } = useAuthSession();
   const isPrescriptionEditor = ['vet', 'admin'].includes(currentUser?.role);
 
   const [appointment, setAppointment] = useState(null);

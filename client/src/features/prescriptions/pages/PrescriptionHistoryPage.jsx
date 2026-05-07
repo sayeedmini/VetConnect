@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import SiteLayout from '../../../components/SiteLayout';
-import { getUser } from '../../auth/utils/auth';
+import { useAuthSession } from '../../auth/context/AuthSessionContext';
 import { getMyPrescriptions } from '../services/prescriptionApi';
 import { downloadPrescriptionPdf } from '../utils/prescriptionPdf';
 
 function PrescriptionHistoryPage() {
-  const currentUser = getUser();
+  const { user: currentUser } = useAuthSession();
   const [prescriptions, setPrescriptions] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);

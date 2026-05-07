@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuthSession } from '../context/AuthSessionContext';
 import { registerUser } from '../services/authApi';
 
 function RegisterPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = location.state?.from || '/vets';
+  const { isLoggedIn, isReady } = useAuthSession();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -17,6 +19,12 @@ function RegisterPage() {
   });
 
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isReady && isLoggedIn) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [isLoggedIn, isReady, navigate, redirectTo]);
 
   const inputStyle = {
     width: '100%',

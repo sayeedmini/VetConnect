@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuthSession } from '../context/AuthSessionContext';
 import { loginUser, verifyTwoFactor } from '../services/authApi';
 import { saveAuth } from '../utils/auth';
 
@@ -9,6 +10,7 @@ function LoginPage() {
   const location = useLocation();
   const redirectTo = location.state?.from || '/vets';
   const prefillEmail = location.state?.prefillEmail || '';
+  const { isLoggedIn, isReady } = useAuthSession();
 
   const [formData, setFormData] = useState({ email: prefillEmail, password: '' });
   const [verificationCode, setVerificationCode] = useState('');
@@ -47,6 +49,12 @@ function LoginPage() {
       ignore = true;
     };
   }, [challenge?.otpauthUrl]);
+
+  useEffect(() => {
+    if (isReady && isLoggedIn) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [isLoggedIn, isReady, navigate, redirectTo]);
 
   const handleChange = (event) => {
     setFormData((prev) => ({ ...prev, [event.target.name]: event.target.value }));

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import SiteLayout from '../../../components/SiteLayout';
-import { getUser } from '../../auth/utils/auth';
+import { useAuthSession } from '../../auth/context/AuthSessionContext';
 import { getAllVets } from '../services/vetApi';
 
 const defaultFilters = {
@@ -29,7 +29,7 @@ function VetListPage() {
   const [filters, setFilters] = useState(defaultFilters);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('recommended');
-  const currentUser = getUser();
+  const { user: currentUser } = useAuthSession();
 
   const fetchVets = async (activeFilters = {}) => {
     try {

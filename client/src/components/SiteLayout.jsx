@@ -1,5 +1,6 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { getToken, getUser, isLoggedIn, logout } from '../features/auth/utils/auth';
+import { useAuthSession } from '../features/auth/context/AuthSessionContext';
+import { getToken } from '../features/auth/utils/auth';
 import { logoutUser as logoutUserSession } from '../features/auth/services/authApi';
 
 const navItems = [
@@ -42,8 +43,7 @@ function SiteLayout({
   compact = false,
 }) {
   const navigate = useNavigate();
-  const user = getUser();
-  const loggedIn = isLoggedIn();
+  const { user, isLoggedIn: loggedIn, logout } = useAuthSession();
 
   const handleLogout = async () => {
     try {
@@ -67,7 +67,9 @@ function SiteLayout({
               P
             </div>
             <div>
-              <div className="font-display text-xl font-extrabold tracking-tight text-[#002045]">VetConnect</div>
+              <div className="font-display text-xl font-extrabold tracking-tight text-[#002045]">
+                VetConnect
+              </div>
               <div className="text-xs text-slate-500">Trusted veterinary care platform</div>
             </div>
           </Link>
@@ -96,7 +98,10 @@ function SiteLayout({
               </>
             ) : (
               <>
-                <Link to="/login" className="hidden text-sm font-semibold text-slate-700 transition hover:text-teal-700 sm:inline-block">
+                <Link
+                  to="/login"
+                  className="hidden text-sm font-semibold text-slate-700 transition hover:text-teal-700 sm:inline-block"
+                >
                   Login
                 </Link>
                 <Link
@@ -113,12 +118,17 @@ function SiteLayout({
 
       <main>
         {(title || subtitle || eyebrow || actions || backTo) && (
-          <section className={`mx-auto w-full max-w-7xl px-4 ${compact ? 'pt-10' : 'pt-14'} sm:px-6 lg:px-8`}>
+          <section
+            className={`mx-auto w-full max-w-7xl px-4 ${compact ? 'pt-10' : 'pt-14'} sm:px-6 lg:px-8`}
+          >
             <div className="rounded-[28px] border border-slate-200/80 bg-white px-6 py-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-8 lg:px-10">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-3xl">
                   {backTo && (
-                    <Link to={backTo} className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-800">
+                    <Link
+                      to={backTo}
+                      className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-800"
+                    >
                       <span aria-hidden="true">←</span>
                       {backLabel}
                     </Link>
@@ -128,8 +138,16 @@ function SiteLayout({
                       {eyebrow}
                     </div>
                   )}
-                  {title && <h1 className="font-display text-4xl font-extrabold tracking-tight text-[#002045] sm:text-5xl">{title}</h1>}
-                  {subtitle && <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">{subtitle}</p>}
+                  {title && (
+                    <h1 className="font-display text-4xl font-extrabold tracking-tight text-[#002045] sm:text-5xl">
+                      {title}
+                    </h1>
+                  )}
+                  {subtitle && (
+                    <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+                      {subtitle}
+                    </p>
+                  )}
                 </div>
                 {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
               </div>
@@ -150,15 +168,25 @@ function SiteLayout({
             </p>
           </div>
           <div>
-            <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">Platform</div>
+            <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+              Platform
+            </div>
             <div className="mt-4 space-y-3 text-sm text-slate-600">
-              <Link className="block hover:text-teal-700" to="/vets">Find a Vet</Link>
-              <Link className="block hover:text-teal-700" to="/appointments">Book Appointment</Link>
-              <Link className="block hover:text-teal-700" to="/prescriptions">Prescription History</Link>
+              <Link className="block hover:text-teal-700" to="/vets">
+                Find a Vet
+              </Link>
+              <Link className="block hover:text-teal-700" to="/appointments">
+                Book Appointment
+              </Link>
+              <Link className="block hover:text-teal-700" to="/prescriptions">
+                Prescription History
+              </Link>
             </div>
           </div>
           <div>
-            <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">Company</div>
+            <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+              Company
+            </div>
             <div className="mt-4 space-y-3 text-sm text-slate-600">
               <span className="block">About Us</span>
               <span className="block">Contact Support</span>
@@ -166,7 +194,9 @@ function SiteLayout({
             </div>
           </div>
           <div>
-            <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">Legal</div>
+            <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+              Legal
+            </div>
             <div className="mt-4 space-y-3 text-sm text-slate-600">
               <span className="block">Privacy Policy</span>
               <span className="block">Terms of Service</span>

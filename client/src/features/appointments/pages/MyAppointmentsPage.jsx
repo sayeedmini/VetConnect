@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import SiteLayout from '../../../components/SiteLayout';
 import { formatFriendlyDate } from '../../../utils/date';
-import { getUser } from '../../auth/utils/auth';
+import { useAuthSession } from '../../auth/context/AuthSessionContext';
 import { cancelAppointment, completeAppointment, getMyAppointments } from '../services/appointmentApi';
 
 function StatusBadge({ status }) {
@@ -30,7 +30,7 @@ function StatCard({ label, value, tone }) {
 
 function MyAppointmentsPage() {
   const location = useLocation();
-  const currentUser = getUser();
+  const { user: currentUser } = useAuthSession();
   const [appointments, setAppointments] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);

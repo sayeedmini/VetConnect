@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from '../../../lib/apiClient';
 import { getToken } from '../../auth/utils/auth';
 import { API_BASE_URL } from '../../../lib/runtimeConfig';
 
@@ -10,7 +10,7 @@ const getAuthHeaders = () => {
 };
 
 export const getPosts = async () => {
-  const response = await axios.get(POSTS_API_BASE_URL, {
+  const response = await apiClient.get(POSTS_API_BASE_URL, {
     headers: getAuthHeaders(),
   });
 
@@ -18,7 +18,7 @@ export const getPosts = async () => {
 };
 
 export const createPost = async (payload) => {
-  const response = await axios.post(POSTS_API_BASE_URL, payload, {
+  const response = await apiClient.post(POSTS_API_BASE_URL, payload, {
     headers: getAuthHeaders(),
   });
 
@@ -26,7 +26,7 @@ export const createPost = async (payload) => {
 };
 
 export const updatePost = async (id, payload) => {
-  const response = await axios.put(`${POSTS_API_BASE_URL}/${id}`, payload, {
+  const response = await apiClient.put(`${POSTS_API_BASE_URL}/${id}`, payload, {
     headers: getAuthHeaders(),
   });
 

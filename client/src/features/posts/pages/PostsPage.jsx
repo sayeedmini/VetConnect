@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import SiteLayout from '../../../components/SiteLayout';
-import { getUser, isLoggedIn } from '../../auth/utils/auth';
+import { useAuthSession } from '../../auth/context/AuthSessionContext';
 import { createPost, getPosts, updatePost } from '../services/postApi';
 
 function PostsPage() {
-  const user = getUser();
-  const loggedIn = isLoggedIn();
+  const { user, isLoggedIn: loggedIn } = useAuthSession();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

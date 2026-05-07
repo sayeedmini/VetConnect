@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from '../../../lib/apiClient';
 import { getToken } from '../../auth/utils/auth';
 import { API_BASE_URL } from '../../../lib/runtimeConfig';
 
@@ -15,7 +15,7 @@ const getAuthHeaders = () => {
 };
 
 export const getMyConversations = async () => {
-  const response = await axios.get(`${MESSAGES_API_BASE_URL}/my`, {
+  const response = await apiClient.get(`${MESSAGES_API_BASE_URL}/my`, {
     headers: getAuthHeaders(),
   });
 
@@ -23,7 +23,7 @@ export const getMyConversations = async () => {
 };
 
 export const getConversationByAppointment = async (appointmentId) => {
-  const response = await axios.get(`${MESSAGES_API_BASE_URL}/appointments/${appointmentId}`, {
+  const response = await apiClient.get(`${MESSAGES_API_BASE_URL}/appointments/${appointmentId}`, {
     headers: getAuthHeaders(),
   });
 
@@ -31,7 +31,7 @@ export const getConversationByAppointment = async (appointmentId) => {
 };
 
 export const sendMessage = async (appointmentId, payload) => {
-  const response = await axios.post(`${MESSAGES_API_BASE_URL}/appointments/${appointmentId}`, payload, {
+  const response = await apiClient.post(`${MESSAGES_API_BASE_URL}/appointments/${appointmentId}`, payload, {
     headers: getAuthHeaders(),
   });
 

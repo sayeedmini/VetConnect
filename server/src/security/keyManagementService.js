@@ -30,7 +30,10 @@ const ensureKeyManagementReady = () => {
 };
 
 const ensureBootstrapKeySync = () => {
-  ensureKeyManagementReady();
+  if (!cachedBootstrap) {
+    throw new Error('Bootstrap key is not initialized');
+  }
+
   return cachedBootstrap;
 };
 

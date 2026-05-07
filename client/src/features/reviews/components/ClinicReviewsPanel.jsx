@@ -6,7 +6,7 @@ import {
   moderateReview,
   updateReview,
 } from '../services/reviewApi';
-import { getUser, isLoggedIn } from '../../auth/utils/auth';
+import { useAuthSession } from '../../auth/context/AuthSessionContext';
 
 const RATING_LABELS = {
   1: 'Poor',
@@ -17,8 +17,7 @@ const RATING_LABELS = {
 };
 
 function ClinicReviewsPanel({ clinicId, clinicName = 'this clinic', onReviewStatsChange }) {
-  const user = getUser();
-  const loggedIn = isLoggedIn();
+  const { user, isLoggedIn: loggedIn } = useAuthSession();
   const isAdmin = user?.role === 'admin';
   const canWriteReview = ['petOwner', 'admin'].includes(user?.role);
 
