@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const Appointment = require('../models/Appointment');
 const Prescription = require('../models/Prescription');
 
@@ -16,12 +15,6 @@ const normalizeMedicines = (items = []) => {
       instructions: String(item?.instructions || '').trim(),
     }))
     .filter((item) => item.name && item.dosage);
-};
-
-const generateVerificationCode = () => {
-  const randomPart = crypto.randomBytes(3).toString('hex').toUpperCase();
-  const timePart = Date.now().toString(36).toUpperCase();
-  return `RX-${timePart}-${randomPart}`;
 };
 
 const populatePrescriptionQuery = (query) =>
@@ -90,11 +83,6 @@ const upsertPrescriptionByAppointment = async (req, res) => {
       prescription.issuedAt = new Date();
       await prescription.save();
     } else {
-      let verificationCode = generateVerificationCode();
-      while (await Prescription.exists({ verificationCode })) {
-        verificationCode = generateVerificationCode();
-      }
-
       prescription = await Prescription.create({
         appointment: appointment._id,
         clinic: appointment.clinic._id,
@@ -105,7 +93,6 @@ const upsertPrescriptionByAppointment = async (req, res) => {
         diagnosis,
         medicines: normalizedMedicines,
         notes: notes || '',
-        verificationCode,
         issuedAt: new Date(),
       });
     }
@@ -173,10 +160,6 @@ const getMyPrescriptions = async (req, res) => {
     const { petName = '' } = req.query;
     const query = {};
 
-    if (petName) {
-      query.petName = { $regex: petName, $options: 'i' };
-    }
-
     if (req.user.role === 'petOwner') {
       query.petOwner = req.user._id;
     } else if (req.user.role === 'vet') {
@@ -192,10 +175,16 @@ const getMyPrescriptions = async (req, res) => {
       Prescription.find(query).sort({ createdAt: -1 })
     );
 
+    const filteredPrescriptions = petName
+      ? prescriptions.filter((item) =>
+          String(item.petName || '').toLowerCase().includes(String(petName).trim().toLowerCase())
+        )
+      : prescriptions;
+
     return res.status(200).json({
       success: true,
-      count: prescriptions.length,
-      data: prescriptions,
+      count: filteredPrescriptions.length,
+      data: filteredPrescriptions,
     });
   } catch (error) {
     return res.status(500).json({
@@ -206,35 +195,8 @@ const getMyPrescriptions = async (req, res) => {
   }
 };
 
-const verifyPrescriptionByCode = async (req, res) => {
-  try {
-    const prescription = await populatePrescriptionQuery(
-      Prescription.findOne({ verificationCode: req.params.verificationCode })
-    );
-
-    if (!prescription) {
-      return res.status(404).json({
-        success: false,
-        message: 'Prescription verification failed',
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: prescription,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to verify prescription',
-      error: error.message,
-    });
-  }
-};
-
 module.exports = {
   upsertPrescriptionByAppointment,
   getPrescriptionByAppointment,
   getMyPrescriptions,
-  verifyPrescriptionByCode,
 };

@@ -1,34 +1,25 @@
 const mongoose = require('mongoose');
+const { createEncryptedStringField } = require('../security/secureField');
 
 const medicineSchema = new mongoose.Schema(
   {
     name: {
-      type: String,
+      ...createEncryptedStringField('rsa'),
       required: true,
-      trim: true,
     },
     dosage: {
-      type: String,
+      ...createEncryptedStringField('elgamal'),
       required: true,
-      trim: true,
     },
-    frequency: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    duration: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    instructions: {
-      type: String,
-      default: '',
-      trim: true,
-    },
+    frequency: createEncryptedStringField('elgamal'),
+    duration: createEncryptedStringField('elgamal'),
+    instructions: createEncryptedStringField('elgamal'),
   },
-  { _id: false }
+  {
+    _id: false,
+    toJSON: { getters: true },
+    toObject: { getters: true },
+  }
 );
 
 const prescriptionSchema = new mongoose.Schema(
@@ -55,41 +46,29 @@ const prescriptionSchema = new mongoose.Schema(
       required: true,
     },
     petName: {
-      type: String,
+      ...createEncryptedStringField('rsa'),
       required: true,
-      trim: true,
     },
-    petType: {
-      type: String,
-      default: '',
-      trim: true,
-    },
+    petType: createEncryptedStringField('elgamal'),
     diagnosis: {
-      type: String,
+      ...createEncryptedStringField('elgamal'),
       required: true,
-      trim: true,
     },
     medicines: {
       type: [medicineSchema],
       default: [],
     },
-    notes: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    verificationCode: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-    },
+    notes: createEncryptedStringField('elgamal'),
     issuedAt: {
       type: Date,
       default: Date.now,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
+  }
 );
 
 prescriptionSchema.index({ petOwner: 1, petName: 1, createdAt: -1 });

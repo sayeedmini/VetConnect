@@ -3,9 +3,11 @@ client/node_modules/
 server/node_modules/
 
 .env
-server/.env
 client/.env
+server/.env
 
 dist/
 build/
-client/dist/
+.vscode/
+.DS_Store
+server/storage/

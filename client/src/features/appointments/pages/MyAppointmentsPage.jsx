@@ -182,6 +182,14 @@ function MyAppointmentsPage() {
                       </div>
 
                       <div className="mt-5 flex flex-wrap gap-3">
+                        <Link
+                          className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
+                          to={`/messages?appointment=${appointment._id}`}
+                        >
+                          {['vet', 'admin'].includes(currentUser?.role)
+                            ? 'Message pet owner'
+                            : 'Message vet'}
+                        </Link>
                         {canReschedule && (
                           <Link className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-[#002045] transition hover:border-slate-400 hover:bg-slate-100" to={`/appointments/${appointment._id}/reschedule`}>
                             Reschedule
@@ -206,11 +214,6 @@ function MyAppointmentsPage() {
                           <Link className="rounded-xl border border-teal-300 bg-teal-50 px-4 py-2.5 text-sm font-semibold text-teal-800 transition hover:bg-teal-100" to={`/vets/${appointment.clinic?._id}`}>
                             Review clinic
                           </Link>
-                        )}
-                        {appointment.calendarSync?.addToCalendarUrl && (
-                          <a className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-100" href={appointment.calendarSync.addToCalendarUrl} target="_blank" rel="noreferrer">
-                            Add to Google Calendar
-                          </a>
                         )}
                       </div>
                     </article>

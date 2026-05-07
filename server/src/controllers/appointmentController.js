@@ -1,9 +1,5 @@
 const Appointment = require('../models/Appointment');
 const VetClinic = require('../models/VetClinic');
-const {
-  syncAppointmentToGoogleCalendar,
-  removeAppointmentFromGoogleCalendar,
-} = require('../services/googleCalendarService');
 
 const SLOT_DURATION_MINUTES = 30;
 const WEEK_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -271,14 +267,6 @@ const createAppointment = async (req, res) => {
       reminderAt: new Date(selectedSlotStartTime.getTime() - 24 * 60 * 60 * 1000),
     });
 
-    const calendarSync = await syncAppointmentToGoogleCalendar({
-      appointment,
-      clinic,
-    });
-
-    appointment.calendarSync = calendarSync;
-    await appointment.save();
-
     const populatedAppointment = await populateAppointmentQuery(
       Appointment.findById(appointment._id)
     );
@@ -401,17 +389,8 @@ const cancelAppointment = async (req, res) => {
       });
     }
 
-    const clinic = await VetClinic.findById(appointment.clinic).select('clinicName address');
-
     appointment.status = 'cancelled';
     appointment.cancelledBy = isAdmin ? 'admin' : isClinicOwner ? 'vet' : 'petOwner';
-
-    const calendarSync = await removeAppointmentFromGoogleCalendar({
-      appointment,
-      clinic,
-    });
-
-    appointment.calendarSync = calendarSync;
     await appointment.save();
 
     const populatedAppointment = await populateAppointmentQuery(
@@ -526,13 +505,6 @@ const rescheduleAppointment = async (req, res) => {
     appointment.startTime = selectedSlotStartTime;
     appointment.endTime = selectedSlotEndTime;
     appointment.reminderAt = new Date(selectedSlotStartTime.getTime() - 24 * 60 * 60 * 1000);
-
-    const calendarSync = await syncAppointmentToGoogleCalendar({
-      appointment,
-      clinic,
-    });
-
-    appointment.calendarSync = calendarSync;
     await appointment.save();
 
     const populatedAppointment = await populateAppointmentQuery(

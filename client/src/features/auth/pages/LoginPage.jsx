@@ -1,29 +1,71 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { loginUser } from '../services/authApi';
+import { loginUser, verifyTwoFactor } from '../services/authApi';
 import { saveAuth } from '../utils/auth';
 
 function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = location.state?.from || '/vets';
+  const prefillEmail = location.state?.prefillEmail || '';
 
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [formData, setFormData] = useState({ email: prefillEmail, password: '' });
+  const [verificationCode, setVerificationCode] = useState('');
+  const [challenge, setChallenge] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  useEffect(() => {
+    let ignore = false;
+
+    const buildQrCode = async () => {
+      if (!challenge?.otpauthUrl) {
+        setQrCodeDataUrl('');
+        return;
+      }
+
+      try {
+        const nextQrCodeDataUrl = await QRCode.toDataURL(challenge.otpauthUrl, {
+          width: 220,
+          margin: 1,
+        });
+
+        if (!ignore) {
+          setQrCodeDataUrl(nextQrCodeDataUrl);
+        }
+      } catch (error) {
+        console.error(error);
+        if (!ignore) {
+          setQrCodeDataUrl('');
+        }
+      }
+    };
+
+    buildQrCode();
+    return () => {
+      ignore = true;
+    };
+  }, [challenge?.otpauthUrl]);
+
+  const handleChange = (event) => {
+    setFormData((prev) => ({ ...prev, [event.target.name]: event.target.value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handlePrimarySubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
 
     try {
       const data = await loginUser(formData);
-      saveAuth(data.token, data.user);
-      alert('Login successful');
-      navigate(redirectTo, { replace: true });
+      setChallenge(data);
+      setVerificationCode('');
+
+      if (data.requiresTwoFactorSetup) {
+        alert('Scan the QR code with Microsoft Authenticator, then enter the 6-digit code to finish signing in.');
+      } else {
+        alert('Open your authenticator app and enter the current 6-digit code.');
+      }
     } catch (error) {
       alert(error?.response?.data?.message || 'Login failed');
       console.error(error);
@@ -31,6 +73,34 @@ function LoginPage() {
       setLoading(false);
     }
   };
+
+  const handleVerificationSubmit = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+
+    try {
+      const data = await verifyTwoFactor({
+        challengeId: challenge?.challengeId,
+        code: verificationCode,
+      });
+      saveAuth(data.token, data.user);
+      alert('Login successful');
+      navigate(redirectTo, { replace: true });
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Verification failed');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetLogin = () => {
+    setChallenge(null);
+    setVerificationCode('');
+    setQrCodeDataUrl('');
+  };
+
+  const isSetupFlow = Boolean(challenge?.requiresTwoFactorSetup);
 
   return (
     <div className="min-h-screen bg-[#F7F9FB] px-4 py-8 sm:px-6 lg:px-8">
@@ -57,8 +127,8 @@ function LoginPage() {
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
             <div className="rounded-[24px] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
-              <div className="font-semibold text-[#002045]">Appointments in one view</div>
-              <div className="mt-2 text-sm leading-7 text-slate-600">Track upcoming, completed, and cancelled visits easily.</div>
+              <div className="font-semibold text-[#002045]">Authenticator protected</div>
+              <div className="mt-2 text-sm leading-7 text-slate-600">Use Microsoft Authenticator or any compatible TOTP app for stronger two-step security.</div>
             </div>
             <div className="rounded-[24px] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
               <div className="font-semibold text-[#002045]">Role-based workflow</div>
@@ -69,40 +139,109 @@ function LoginPage() {
 
         <main className="flex items-center justify-center px-6 py-10 lg:px-10">
           <div className="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_22px_60px_rgba(15,23,42,0.06)]">
-            <h2 className="font-display text-4xl font-extrabold text-[#002045]">Login</h2>
-            <p className="mt-3 text-slate-600">Enter your account details to continue.</p>
+            <h2 className="font-display text-4xl font-extrabold text-[#002045]">
+              {challenge ? (isSetupFlow ? 'Set up authenticator' : 'Two-step verification') : 'Login'}
+            </h2>
+            <p className="mt-3 text-slate-600">
+              {challenge
+                ? isSetupFlow
+                  ? 'Scan the QR code in Microsoft Authenticator, then enter the 6-digit code it generates.'
+                  : 'Open your authenticator app and enter the current 6-digit code.'
+                : 'Enter your account details to continue.'}
+            </p>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Email address</span>
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-teal-400 focus:bg-white"
-                />
-              </label>
+            {challenge ? (
+              <form onSubmit={handleVerificationSubmit} className="mt-8 space-y-5">
+                {isSetupFlow ? (
+                  <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                    <div className="flex flex-col items-center gap-4">
+                      {qrCodeDataUrl ? (
+                        <img src={qrCodeDataUrl} alt="Authenticator QR code" className="rounded-2xl border border-slate-200 bg-white p-3" />
+                      ) : (
+                        <div className="flex h-[220px] w-[220px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm text-slate-500">
+                          Generating QR code...
+                        </div>
+                      )}
+                      <div className="w-full rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+                        <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Manual entry key</div>
+                        <div className="mt-2 break-all font-mono text-sm font-semibold text-[#002045]">
+                          {challenge.manualEntryKey}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Password</span>
-                <input
-                  name="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-teal-400 focus:bg-white"
-                />
-              </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-slate-700">
+                    Verification code
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Enter the 6-digit code"
+                    value={verificationCode}
+                    onChange={(event) => setVerificationCode(event.target.value)}
+                    required
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-teal-400 focus:bg-white"
+                  />
+                </label>
 
-              <button type="submit" className="w-full rounded-2xl bg-[#002045] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#1A365D] disabled:cursor-not-allowed disabled:opacity-60" disabled={loading}>
-                {loading ? 'Logging in...' : 'Login'}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  className="w-full rounded-2xl bg-[#002045] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#1A365D] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={loading}
+                >
+                  {loading
+                    ? isSetupFlow
+                      ? 'Activating authenticator...'
+                      : 'Verifying...'
+                    : isSetupFlow
+                      ? 'Activate and sign in'
+                      : 'Verify and continue'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={resetLogin}
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-base font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                >
+                  Start over
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handlePrimarySubmit} className="mt-8 space-y-5">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-slate-700">Email address</span>
+                  <input
+                    name="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-teal-400 focus:bg-white"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-slate-700">Password</span>
+                  <input
+                    name="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-teal-400 focus:bg-white"
+                  />
+                </label>
+
+                <button type="submit" className="w-full rounded-2xl bg-[#002045] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#1A365D] disabled:cursor-not-allowed disabled:opacity-60" disabled={loading}>
+                  {loading ? 'Checking credentials...' : 'Continue to verification'}
+                </button>
+              </form>
+            )}
 
             <p className="mt-6 text-sm text-slate-600">
               No account yet?{' '}

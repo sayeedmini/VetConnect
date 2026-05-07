@@ -39,7 +39,6 @@ function PrescriptionHistoryPage() {
         item.petType,
         item.clinic?.clinicName,
         item.diagnosis,
-        item.verificationCode,
         ...(item.medicines || []).map((medicine) => medicine.name),
       ]
         .filter(Boolean)
@@ -56,17 +55,17 @@ function PrescriptionHistoryPage() {
       title="Prescription History"
       subtitle={
         currentUser?.role === 'petOwner'
-          ? 'All prescriptions issued for your pets, with download and QR verification actions.'
+          ? 'All prescriptions issued for your pets, with download and follow-up actions.'
           : currentUser?.role === 'vet'
             ? 'A clean record of the prescriptions you created across completed consultations.'
-            : 'A platform-wide prescription overview with search and verification actions.'
+            : 'A platform-wide prescription overview with search and follow-up actions.'
       }
       actions={
         <div className="flex flex-wrap gap-3">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search pet, clinic, medicine, or code"
+            placeholder="Search pet, clinic, diagnosis, or medicine"
             className="w-72 rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:border-teal-400"
           />
           <Link className="rounded-xl bg-[#002045] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1A365D]" to="/appointments">
@@ -146,14 +145,8 @@ function PrescriptionHistoryPage() {
                         Download PDF
                       </button>
                       <Link
-                        to={`/prescriptions/verify/${prescription.verificationCode}`}
-                        className="rounded-xl bg-[#002045] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1A365D]"
-                      >
-                        QR Verify
-                      </Link>
-                      <Link
                         to={`/appointments/${prescription.appointment?._id}/prescription`}
-                        className="rounded-xl border border-teal-300 bg-teal-50 px-4 py-2.5 text-sm font-semibold text-teal-800 transition hover:bg-teal-100"
+                        className="rounded-xl bg-[#002045] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1A365D]"
                       >
                         Open record
                       </Link>

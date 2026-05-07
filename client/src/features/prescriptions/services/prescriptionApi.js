@@ -41,8 +41,3 @@ export const getMyPrescriptions = async (petName = '') => {
 
   return response.data;
 };
-
-export const verifyPrescription = async (verificationCode) => {
-  const response = await axios.get(`${API_BASE_URL}/prescriptions/verify/${verificationCode}`);
-  return response.data;
-};

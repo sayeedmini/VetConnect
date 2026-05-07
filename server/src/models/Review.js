@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { createEncryptedStringField } = require('../security/secureField');
 
 const reviewSchema = new mongoose.Schema(
   {
@@ -23,23 +24,19 @@ const reviewSchema = new mongoose.Schema(
       min: 1,
       max: 5,
     },
-    comment: {
-      type: String,
-      default: '',
-      trim: true,
-    },
+    comment: createEncryptedStringField('elgamal'),
     moderationStatus: {
       type: String,
       enum: ['approved', 'rejected'],
       default: 'approved',
     },
-    adminNote: {
-      type: String,
-      default: '',
-      trim: true,
-    },
+    adminNote: createEncryptedStringField('elgamal'),
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
+  }
 );
 
 reviewSchema.index({ clinic: 1, reviewer: 1 }, { unique: true });

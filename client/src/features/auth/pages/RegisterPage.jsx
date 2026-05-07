@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { registerUser } from '../services/authApi';
-import { saveAuth } from '../utils/auth';
 
 function RegisterPage() {
   const navigate = useNavigate();
@@ -11,6 +10,8 @@ function RegisterPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    contactInfo: '',
+    role: 'petOwner',
     password: '',
     confirmPassword: '',
   });
@@ -48,7 +49,13 @@ function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (
+      !formData.name ||
+      !formData.email ||
+      !formData.contactInfo ||
+      !formData.password ||
+      !formData.confirmPassword
+    ) {
       alert('Please fill in all fields');
       return;
     }
@@ -69,17 +76,20 @@ function RegisterPage() {
       const payload = {
         name: formData.name,
         email: formData.email,
+        contactInfo: formData.contactInfo,
+        role: formData.role,
         password: formData.password,
       };
 
-      const data = await registerUser(payload);
-
-      if (data?.token && data?.user) {
-        saveAuth(data.token, data.user);
-      }
-
-      alert('Registration successful');
-      navigate(redirectTo, { replace: true });
+      await registerUser(payload);
+      alert('Registration successful. Please log in and complete two-step verification.');
+      navigate('/login', {
+        replace: true,
+        state: {
+          from: redirectTo,
+          prefillEmail: formData.email,
+        },
+      });
     } catch (error) {
       alert(error?.response?.data?.message || 'Registration failed');
       console.error(error);
@@ -161,6 +171,39 @@ function RegisterPage() {
               disabled={loading}
               style={inputStyle}
             />
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label htmlFor="contactInfo" style={labelStyle}>
+              Contact Info
+            </label>
+            <input
+              id="contactInfo"
+              type="text"
+              name="contactInfo"
+              placeholder="Phone number or backup email"
+              value={formData.contactInfo}
+              onChange={handleChange}
+              disabled={loading}
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label htmlFor="role" style={labelStyle}>
+              Register As
+            </label>
+            <select
+              id="role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              disabled={loading}
+              style={inputStyle}
+            >
+              <option value="petOwner">Pet Owner</option>
+              <option value="vet">Vet</option>
+            </select>
           </div>
 
           <div style={{ marginBottom: '16px' }}>

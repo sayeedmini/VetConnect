@@ -388,7 +388,7 @@ function AppointmentPrescriptionPage() {
 
               <div className="prescription-status-copy">
                 <p>{prescription ? 'A prescription already exists for this appointment.' : 'No prescription has been saved yet.'}</p>
-                <p><strong>Verification code:</strong> {prescription?.verificationCode || 'Pending'}</p>
+                <p><strong>Status:</strong> {prescription ? 'Prescription ready for download' : 'Pending creation'}</p>
               </div>
 
               <div className="prescription-action-stack">

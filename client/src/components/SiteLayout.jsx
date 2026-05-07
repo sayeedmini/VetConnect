@@ -1,10 +1,14 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { getUser, isLoggedIn, logout } from '../features/auth/utils/auth';
+import { getToken, getUser, isLoggedIn, logout } from '../features/auth/utils/auth';
+import { logoutUser as logoutUserSession } from '../features/auth/services/authApi';
 
 const navItems = [
   { to: '/', label: 'Home' },
-  { to: '/vets', label: 'Find Clinics' },
+  { to: '/vets', label: 'Clinics' },
   { to: '/appointments', label: 'Appointments' },
+  { to: '/messages', label: 'Messages' },
+  { to: '/posts', label: 'Posts' },
+  { to: '/profile', label: 'Profile' },
   { to: '/prescriptions', label: 'Prescriptions' },
 ];
 
@@ -41,9 +45,17 @@ function SiteLayout({
   const user = getUser();
   const loggedIn = isLoggedIn();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      if (user) {
+        await logoutUserSession(getToken());
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      logout();
+      navigate('/login');
+    }
   };
 
   return (

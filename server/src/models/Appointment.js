@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { createEncryptedStringField } = require('../security/secureField');
 
 const appointmentSchema = new mongoose.Schema(
   {
@@ -18,20 +19,11 @@ const appointmentSchema = new mongoose.Schema(
       required: true,
     },
     petName: {
-      type: String,
+      ...createEncryptedStringField('rsa'),
       required: true,
-      trim: true,
     },
-    petType: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    reason: {
-      type: String,
-      trim: true,
-      default: '',
-    },
+    petType: createEncryptedStringField('elgamal'),
+    reason: createEncryptedStringField('elgamal'),
     appointmentDate: {
       type: String,
       required: true,
@@ -55,11 +47,7 @@ const appointmentSchema = new mongoose.Schema(
       enum: ['scheduled', 'cancelled', 'completed'],
       default: 'scheduled',
     },
-    notes: {
-      type: String,
-      trim: true,
-      default: '',
-    },
+    notes: createEncryptedStringField('elgamal'),
     cancelledBy: {
       type: String,
       enum: ['petOwner', 'vet', 'admin', null],
@@ -69,27 +57,12 @@ const appointmentSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    calendarSync: {
-      status: {
-        type: String,
-        enum: ['not_configured', 'pending', 'synced', 'failed'],
-        default: 'not_configured',
-      },
-      message: {
-        type: String,
-        default: '',
-      },
-      eventId: {
-        type: String,
-        default: '',
-      },
-      addToCalendarUrl: {
-        type: String,
-        default: '',
-      },
-    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
+  }
 );
 
 appointmentSchema.index({ clinic: 1, startTime: 1, endTime: 1 });

@@ -8,7 +8,9 @@ export const registerUser = async (formData) => {
   const payload = {
     name: formData.name,
     email: formData.email,
+    contactInfo: formData.contactInfo,
     password: formData.password,
+    role: formData.role,
   };
 
   const { data } = await API.post('/register', payload);
@@ -25,12 +27,31 @@ export const loginUser = async (formData) => {
   return data;
 };
 
+export const verifyTwoFactor = async (payload) => {
+  const { data } = await API.post('/verify-2fa', payload);
+  return data;
+};
+
 export const getMe = async (token) => {
   const { data } = await API.get('/me', {
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
+  return data;
+};
+
+export const logoutUser = async (token) => {
+  const { data } = await API.post(
+    '/logout',
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
   return data;
 };
 

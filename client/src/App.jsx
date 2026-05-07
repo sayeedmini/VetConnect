@@ -7,10 +7,12 @@ import RegisterPage from './features/auth/pages/RegisterPage';
 import BookAppointmentPage from './features/appointments/pages/BookAppointmentPage';
 import MyAppointmentsPage from './features/appointments/pages/MyAppointmentsPage';
 import RescheduleAppointmentPage from './features/appointments/pages/RescheduleAppointmentPage';
+import MessagesPage from './features/messages/pages/MessagesPage';
+import PostsPage from './features/posts/pages/PostsPage';
+import ProfilePage from './features/profile/pages/ProfilePage';
 import { getUser, isLoggedIn } from './features/auth/utils/auth';
 import AppointmentPrescriptionPage from './features/prescriptions/pages/AppointmentPrescriptionPage';
 import PrescriptionHistoryPage from './features/prescriptions/pages/PrescriptionHistoryPage';
-import PrescriptionVerificationPage from './features/prescriptions/pages/PrescriptionVerificationPage';
 import AddVetPage from './features/vets/pages/AddVetPage';
 import EditVetPage from './features/vets/pages/EditVetPage';
 import VetDetailsPage from './features/vets/pages/VetDetailsPage';
@@ -32,7 +34,7 @@ const featureCards = [
   },
   {
     title: 'Digital Prescriptions',
-    description: 'Keep treatment history, medicine details, PDF exports, and QR verification together.',
+    description: 'Keep treatment history, medicine details, and downloadable PDF prescriptions together.',
     tone: 'bg-[#E4EAFB] text-[#1A365D]',
     icon: 'Rx',
   },
@@ -127,8 +129,8 @@ function Home() {
                 <div className="text-sm text-slate-600">Care access workflow</div>
               </div>
               <div className="rounded-2xl bg-white/85 p-4 shadow-sm ring-1 ring-white/80 backdrop-blur">
-                <div className="text-2xl font-extrabold text-[#002045]">QR</div>
-                <div className="text-sm text-slate-600">Verified prescriptions</div>
+                <div className="text-2xl font-extrabold text-[#002045]">PDF</div>
+                <div className="text-sm text-slate-600">Downloadable prescriptions</div>
               </div>
             </div>
           </div>
@@ -253,8 +255,7 @@ function App() {
         <Route path="/vets/:id" element={<VetDetailsPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/prescriptions/verify/:verificationCode" element={<PrescriptionVerificationPage />} />
-
+        <Route path="/posts" element={<PostsPage />} />
         <Route
           path="/vets/add"
           element={
@@ -305,6 +306,24 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
               <AppointmentPrescriptionPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
+              <MessagesPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute allowedRoles={['petOwner', 'vet', 'admin']}>
+              <ProfilePage />
             </ProtectedRoute>
           }
         />
