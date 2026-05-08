@@ -1,6 +1,48 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_MAP_CENTER, GOOGLE_MAPS_MAP_ID, loadGoogleMaps } from '../../../lib/loadGoogleMaps';
 
+function createMarker(google, map, position) {
+  if (google.maps.marker?.AdvancedMarkerElement && GOOGLE_MAPS_MAP_ID) {
+    return new google.maps.marker.AdvancedMarkerElement({
+      map,
+      position,
+      title: 'Selected clinic location',
+    });
+  }
+
+  return new google.maps.Marker({
+    map,
+    position,
+    title: 'Selected clinic location',
+  });
+}
+
+function updateMarkerPosition(marker, map, position) {
+  if ('position' in marker) {
+    marker.position = position;
+  } else if (typeof marker.setPosition === 'function') {
+    marker.setPosition(position);
+  }
+
+  if ('map' in marker) {
+    marker.map = map;
+  } else if (typeof marker.setMap === 'function') {
+    marker.setMap(map);
+  }
+}
+
+function clearMarker(marker) {
+  if (!marker) {
+    return;
+  }
+
+  if ('map' in marker) {
+    marker.map = null;
+  } else if (typeof marker.setMap === 'function') {
+    marker.setMap(null);
+  }
+}
+
 function ClinicLocationPicker({ latitude, longitude, onLocationSelect }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -29,6 +71,7 @@ function ClinicLocationPicker({ latitude, longitude, onLocationSelect }) {
     const initializeMap = async () => {
       try {
         setLoading(true);
+        setError('');
         const google = await loadGoogleMaps();
 
         if (!isMounted || !containerRef.current) {
@@ -36,23 +79,23 @@ function ClinicLocationPicker({ latitude, longitude, onLocationSelect }) {
         }
 
         const initialCenter = selectedPosition || DEFAULT_MAP_CENTER;
-        const map = new google.maps.Map(containerRef.current, {
+        const mapOptions = {
           center: initialCenter,
           zoom: selectedPosition ? 15 : 12,
-          mapId: GOOGLE_MAPS_MAP_ID,
           streetViewControl: false,
           mapTypeControl: false,
           fullscreenControl: false,
-        });
+        };
 
+        if (GOOGLE_MAPS_MAP_ID) {
+          mapOptions.mapId = GOOGLE_MAPS_MAP_ID;
+        }
+
+        const map = new google.maps.Map(containerRef.current, mapOptions);
         mapRef.current = map;
 
         if (selectedPosition) {
-          markerRef.current = new google.maps.marker.AdvancedMarkerElement({
-            map,
-            position: selectedPosition,
-            title: 'Selected clinic location',
-          });
+          markerRef.current = createMarker(google, map, selectedPosition);
         }
 
         map.addListener('click', (event) => {
@@ -66,14 +109,9 @@ function ClinicLocationPicker({ latitude, longitude, onLocationSelect }) {
           };
 
           if (!markerRef.current) {
-            markerRef.current = new google.maps.marker.AdvancedMarkerElement({
-              map,
-              position: nextPosition,
-              title: 'Selected clinic location',
-            });
+            markerRef.current = createMarker(google, map, nextPosition);
           } else {
-            markerRef.current.position = nextPosition;
-            markerRef.current.map = map;
+            updateMarkerPosition(markerRef.current, map, nextPosition);
           }
 
           map.panTo(nextPosition);
@@ -94,9 +132,7 @@ function ClinicLocationPicker({ latitude, longitude, onLocationSelect }) {
 
     return () => {
       isMounted = false;
-      if (markerRef.current) {
-        markerRef.current.map = null;
-      }
+      clearMarker(markerRef.current);
     };
   }, [onLocationSelect]);
 
@@ -108,14 +144,9 @@ function ClinicLocationPicker({ latitude, longitude, onLocationSelect }) {
     const google = window.google;
 
     if (!markerRef.current) {
-      markerRef.current = new google.maps.marker.AdvancedMarkerElement({
-        map: mapRef.current,
-        position: selectedPosition,
-        title: 'Selected clinic location',
-      });
+      markerRef.current = createMarker(google, mapRef.current, selectedPosition);
     } else {
-      markerRef.current.position = selectedPosition;
-      markerRef.current.map = mapRef.current;
+      updateMarkerPosition(markerRef.current, mapRef.current, selectedPosition);
     }
 
     mapRef.current.setCenter(selectedPosition);
@@ -138,7 +169,7 @@ function ClinicLocationPicker({ latitude, longitude, onLocationSelect }) {
 
       <div ref={containerRef} className="map-picker-canvas" />
 
-      {loading && <div className="map-picker-overlay">Loading Google Map…</div>}
+      {loading && <div className="map-picker-overlay">Loading Google Map...</div>}
     </div>
   );
 }

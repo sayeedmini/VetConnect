@@ -12,6 +12,10 @@ const buildUserResponse = (user) => ({
   twoFactorEnabled: user.twoFactorEnabled !== false && Boolean(user.twoFactorSecret),
   twoFactorMethod: user.twoFactorMethod || 'totp',
   twoFactorConfigured: Boolean(user.twoFactorSecret),
+  backupCodesRemaining: Array.isArray(user.backupCodes)
+    ? user.backupCodes.filter((entry) => !entry.usedAt).length
+    : 0,
+  backupCodesGeneratedAt: user.backupCodesGeneratedAt || null,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });

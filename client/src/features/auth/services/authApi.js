@@ -3,6 +3,7 @@ import { API_BASE_URL } from '../../../lib/runtimeConfig';
 
 const API = axios.create({
   baseURL: `${API_BASE_URL}/auth`,
+  withCredentials: true,
 });
 
 export const registerUser = async (formData) => {
@@ -33,26 +34,28 @@ export const verifyTwoFactor = async (payload) => {
   return data;
 };
 
-export const getMe = async (token) => {
-  const { data } = await API.get('/me', {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const requestPasswordReset = async (email) => {
+  const { data } = await API.post('/forgot-password', { email });
   return data;
 };
 
-export const logoutUser = async (token) => {
-  const { data } = await API.post(
-    '/logout',
-    {},
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+export const validatePasswordResetToken = async (token) => {
+  const { data } = await API.get(`/reset-password/${encodeURIComponent(token)}`);
+  return data;
+};
 
+export const resetPassword = async ({ token, password }) => {
+  const { data } = await API.post('/reset-password', { token, password });
+  return data;
+};
+
+export const getMe = async () => {
+  const { data } = await API.get('/me');
+  return data;
+};
+
+export const logoutUser = async () => {
+  const { data } = await API.post('/logout');
   return data;
 };
 

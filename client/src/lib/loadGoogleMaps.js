@@ -2,10 +2,16 @@ let googleMapsPromise;
 
 const GOOGLE_MAPS_SCRIPT_ID = 'vetconnect-google-maps-script';
 export const DEFAULT_MAP_CENTER = { lat: 23.8103, lng: 90.4125 };
-export const GOOGLE_MAPS_MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID';
+const RAW_GOOGLE_MAPS_MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID?.trim();
+const INVALID_MAP_IDS = new Set(['', 'your_real_map_id', 'your_google_maps_map_id']);
+
+export const GOOGLE_MAPS_MAP_ID =
+  RAW_GOOGLE_MAPS_MAP_ID && !INVALID_MAP_IDS.has(RAW_GOOGLE_MAPS_MAP_ID)
+    ? RAW_GOOGLE_MAPS_MAP_ID
+    : null;
 
 export const loadGoogleMaps = () => {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
 
   if (!apiKey) {
     return Promise.reject(

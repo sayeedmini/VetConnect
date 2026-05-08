@@ -3,8 +3,11 @@ import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 import SiteLayout from './components/SiteLayout';
 import { AuthSessionProvider, useAuthSession } from './features/auth/context/AuthSessionContext';
 import ProtectedRoute from './features/auth/components/ProtectedRoute';
+import AdminDashboard from './features/admin/pages/AdminDashboard';
+import ForgotPasswordPage from './features/auth/pages/ForgotPasswordPage';
 import LoginPage from './features/auth/pages/LoginPage';
 import RegisterPage from './features/auth/pages/RegisterPage';
+import ResetPasswordPage from './features/auth/pages/ResetPasswordPage';
 import BookAppointmentPage from './features/appointments/pages/BookAppointmentPage';
 import MyAppointmentsPage from './features/appointments/pages/MyAppointmentsPage';
 import RescheduleAppointmentPage from './features/appointments/pages/RescheduleAppointmentPage';
@@ -253,9 +256,19 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/vets" element={<VetListPage />} />
           <Route path="/vets/:id" element={<VetDetailsPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/posts" element={<PostsPage />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/vets/add"
             element={

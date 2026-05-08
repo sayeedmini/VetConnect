@@ -1,6 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthSession } from '../features/auth/context/AuthSessionContext';
-import { getToken } from '../features/auth/utils/auth';
 import { logoutUser as logoutUserSession } from '../features/auth/services/authApi';
 
 const navItems = [
@@ -11,6 +10,7 @@ const navItems = [
   { to: '/posts', label: 'Posts' },
   { to: '/profile', label: 'Profile' },
   { to: '/prescriptions', label: 'Prescriptions' },
+  { to: '/admin', label: 'Admin', roles: ['admin'] },
 ];
 
 function NavItem({ to, label }) {
@@ -48,7 +48,7 @@ function SiteLayout({
   const handleLogout = async () => {
     try {
       if (user) {
-        await logoutUserSession(getToken());
+        await logoutUserSession();
       }
     } catch (error) {
       console.error(error);
@@ -75,9 +75,11 @@ function SiteLayout({
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Main navigation">
-            {navItems.map((item) => (
-              <NavItem key={item.to} {...item} />
-            ))}
+            {navItems
+              .filter((item) => !item.roles || item.roles.includes(user?.role))
+              .map((item) => (
+                <NavItem key={item.to} {...item} />
+              ))}
           </nav>
 
           <div className="flex items-center gap-3">

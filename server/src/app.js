@@ -10,11 +10,21 @@ const postRoutes = require('./routes/postRoutes');
 const prescriptionRoutes = require('./routes/prescriptionRoutes');
 const keyManagementRoutes = require('./routes/keyManagementRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+  })
+);
 app.use(express.json());
+app.use((req, res, next) => {
+  req.cookies = require('./utils/cookies').parseCookies(req.headers.cookie || '');
+  next();
+});
 
 app.get('/', (req, res) => {
   res.send('VetConnect API is running...');
@@ -28,6 +38,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/security', keyManagementRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api', reviewRoutes);
 
 module.exports = app;

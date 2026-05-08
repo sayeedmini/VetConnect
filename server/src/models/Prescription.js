@@ -4,16 +4,16 @@ const { createEncryptedStringField } = require('../security/secureField');
 const medicineSchema = new mongoose.Schema(
   {
     name: {
-      ...createEncryptedStringField('rsa'),
+      ...createEncryptedStringField('ecc'),
       required: true,
     },
     dosage: {
-      ...createEncryptedStringField('elgamal'),
+      ...createEncryptedStringField('ecc'),
       required: true,
     },
-    frequency: createEncryptedStringField('elgamal'),
-    duration: createEncryptedStringField('elgamal'),
-    instructions: createEncryptedStringField('elgamal'),
+    frequency: createEncryptedStringField('ecc'),
+    duration: createEncryptedStringField('ecc'),
+    instructions: createEncryptedStringField('ecc'),
   },
   {
     _id: false,
@@ -46,19 +46,19 @@ const prescriptionSchema = new mongoose.Schema(
       required: true,
     },
     petName: {
-      ...createEncryptedStringField('rsa'),
+      ...createEncryptedStringField('ecc'),
       required: true,
     },
-    petType: createEncryptedStringField('elgamal'),
+    petType: createEncryptedStringField('ecc'),
     diagnosis: {
-      ...createEncryptedStringField('elgamal'),
+      ...createEncryptedStringField('ecc'),
       required: true,
     },
     medicines: {
       type: [medicineSchema],
       default: [],
     },
-    notes: createEncryptedStringField('elgamal'),
+    notes: createEncryptedStringField('ecc'),
     issuedAt: {
       type: Date,
       default: Date.now,

@@ -20,7 +20,7 @@ const messageSchema = new mongoose.Schema(
       required: true,
     },
     content: {
-      ...createEncryptedStringField('elgamal'),
+      ...createEncryptedStringField('ecc'),
       required: true,
       maxlength: 12000,
     },

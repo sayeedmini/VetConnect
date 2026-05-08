@@ -44,10 +44,10 @@ const rotateManagedKey = async (req, res) => {
   try {
     const algorithm = String(req.params.algorithm || '').toLowerCase();
 
-    if (!['rsa', 'elgamal'].includes(algorithm)) {
+    if (!['rsa', 'ecc'].includes(algorithm)) {
       return res.status(400).json({
         success: false,
-        message: 'Only rsa and elgamal key rotation are supported',
+        message: 'Only rsa and ecc key rotation are supported',
       });
     }
 

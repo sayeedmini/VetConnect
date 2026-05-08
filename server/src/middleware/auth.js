@@ -1,67 +1,55 @@
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Session = require('../models/Session');
 const VetClinic = require('../models/VetClinic');
 const { buildSessionFingerprint } = require('../services/sessionSecurityService');
+const { parseCookies } = require('../utils/cookies');
+const {
+  getSessionCookieName,
+  parseSessionCookieValue,
+  hashSessionToken,
+} = require('../services/sessionSecurityService');
 
-const resolveTokenFromRequest = (req) => {
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer ')
-  ) {
-    return req.headers.authorization.split(' ')[1];
-  }
+const resolveSessionTokenFromRequest = (req) => {
+  const parsedCookies =
+    req.cookies && typeof req.cookies === 'object'
+      ? req.cookies
+      : parseCookies(req.headers.cookie || '');
+  const cookieValue = parsedCookies[getSessionCookieName()];
 
-  return null;
+  return parseSessionCookieValue(cookieValue);
 };
 
 const authenticateRequest = async (req, { allowAnonymous = false } = {}) => {
-  const token = resolveTokenFromRequest(req);
+  const sessionToken = resolveSessionTokenFromRequest(req);
 
-  if (!token) {
+  if (!sessionToken) {
     if (allowAnonymous) {
       req.user = null;
       req.authSession = null;
       return;
     }
 
-    const error = new Error('Not authorized. No token provided');
-    error.statusCode = 401;
-    throw error;
-  }
-
-  if (!process.env.JWT_SECRET) {
-    const error = new Error('JWT_SECRET is missing in .env file');
-    error.statusCode = 500;
-    throw error;
-  }
-
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  const user = await User.findById(decoded.id).select('-password');
-
-  if (!user) {
-    const error = new Error('User no longer exists');
-    error.statusCode = 401;
-    throw error;
-  }
-
-  const sessionId = decoded.sid;
-
-  if (!sessionId) {
-    const error = new Error('Session metadata is missing from the token');
+    const error = new Error('Not authorized. No active session provided');
     error.statusCode = 401;
     throw error;
   }
 
   const session = await Session.findOne({
-    sessionId,
-    user: user._id,
+    sessionTokenHash: hashSessionToken(sessionToken),
     revokedAt: null,
     expiresAt: { $gt: new Date() },
-  });
+  }).populate('user', '-password');
 
   if (!session) {
     const error = new Error('The session is no longer active');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const user = session.user;
+
+  if (!user) {
+    const error = new Error('User no longer exists');
     error.statusCode = 401;
     throw error;
   }
@@ -84,7 +72,7 @@ const protect = async (req, res, next) => {
   } catch (error) {
     return res.status(error.statusCode || 401).json({
       success: false,
-      message: error.message || 'Invalid or expired token',
+      message: error.message || 'Invalid or expired session',
       error: error.message,
     });
   }
@@ -97,7 +85,7 @@ const protectOptional = async (req, res, next) => {
   } catch (error) {
     return res.status(error.statusCode || 401).json({
       success: false,
-      message: error.message || 'Invalid or expired token',
+      message: error.message || 'Invalid or expired session',
       error: error.message,
     });
   }

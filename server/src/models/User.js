@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
       ...createEncryptedStringField('rsa'),
       required: true,
     },
-    contactInfo: createEncryptedStringField('elgamal'),
+    contactInfo: createEncryptedStringField('ecc'),
     emailLookup: {
       type: String,
       required: true,
@@ -38,6 +38,22 @@ const userSchema = new mongoose.Schema(
       default: 'totp',
     },
     twoFactorSecret: createEncryptedStringField('rsa'),
+    backupCodes: [
+      {
+        codeHash: {
+          type: String,
+          required: true,
+        },
+        usedAt: {
+          type: Date,
+          default: null,
+        },
+      },
+    ],
+    backupCodesGeneratedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

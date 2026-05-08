@@ -3,12 +3,16 @@ const {
   encryptText: rsaEncryptText,
   decryptText: rsaDecryptText,
 } = require('./rsa');
-const { generateKeyPair: generateElgamalKeyPair } = require('./elgamal');
+const { CURVE: ECC_CURVE, generateKeyPair: generateEccKeyPair, isPointOnCurve } = require('./ecc');
 const SecurityState = require('../models/SecurityState');
+const fs = require('fs');
+const path = require('path');
 
 let cachedBootstrap = null;
 let cachedKeyRing = null;
 let initializationPromise = null;
+const STORAGE_DIR = path.join(__dirname, '..', '..', 'storage');
+const BOOTSTRAP_FILE = path.join(STORAGE_DIR, 'bootstrap-keypair.json');
 
 const writeState = async (kind, payload) => {
   await SecurityState.findOneAndUpdate(
@@ -37,12 +41,34 @@ const ensureBootstrapKeySync = () => {
   return cachedBootstrap;
 };
 
+const ensureStorageDir = async () => {
+  await fs.promises.mkdir(STORAGE_DIR, { recursive: true });
+};
+
+const readBootstrapFromDisk = async () => {
+  try {
+    const rawValue = await fs.promises.readFile(BOOTSTRAP_FILE, 'utf8');
+    return JSON.parse(rawValue);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return null;
+    }
+
+    throw error;
+  }
+};
+
+const writeBootstrapToDisk = async (payload) => {
+  await ensureStorageDir();
+  await fs.promises.writeFile(BOOTSTRAP_FILE, JSON.stringify(payload, null, 2), 'utf8');
+};
+
 const ensureBootstrapKey = async () => {
   if (cachedBootstrap) {
     return cachedBootstrap;
   }
 
-  let bootstrap = await readState('bootstrap');
+  let bootstrap = await readBootstrapFromDisk();
 
   if (!bootstrap) {
     const bootstrapPair = generateRsaKeyPair(384);
@@ -52,7 +78,7 @@ const ensureBootstrapKey = async () => {
       publicKey: bootstrapPair.publicKey,
       privateKey: bootstrapPair.privateKey,
     };
-    await writeState('bootstrap', bootstrap);
+    await writeBootstrapToDisk(bootstrap);
   }
 
   cachedBootstrap = bootstrap;
@@ -81,18 +107,71 @@ const createManagedKeyEntry = (algorithm, keyPair, version) => ({
 
 const createInitialKeyRing = () => {
   const rsaPair = generateRsaKeyPair(384);
-  const elgamalPair = generateElgamalKeyPair();
+  const eccPair = generateEccKeyPair();
 
   return {
     version: 1,
     active: {
       rsa: 'rsa-v1',
-      elgamal: 'elgamal-v1',
+      ecc: 'ecc-v1',
     },
     keys: {
       'rsa-v1': createManagedKeyEntry('rsa', rsaPair, 1),
-      'elgamal-v1': createManagedKeyEntry('elgamal', elgamalPair, 1),
+      'ecc-v1': createManagedKeyEntry('ecc', eccPair, 1),
     },
+  };
+};
+
+const migrateLegacyKeyRing = (keyRing) => {
+  let didChange = false;
+
+  if (!keyRing?.active) {
+    return {
+      keyRing: createInitialKeyRing(),
+      didChange: true,
+    };
+  }
+
+  const activeEccKeyId = keyRing.active.ecc;
+  const activeEccRecord = activeEccKeyId ? keyRing.keys?.[activeEccKeyId] : null;
+  const hasValidCurveName = activeEccRecord?.publicKey?.curve === ECC_CURVE.name;
+  let hasValidPublicPoint = false;
+
+  try {
+    const point = activeEccRecord?.publicKey?.point;
+    hasValidPublicPoint = Boolean(
+      point?.x &&
+        point?.y &&
+        isPointOnCurve({
+          x: BigInt(`0x${point.x}`),
+          y: BigInt(`0x${point.y}`),
+        })
+    );
+  } catch (error) {
+    hasValidPublicPoint = false;
+  }
+
+  if (
+    !activeEccRecord ||
+    activeEccRecord.algorithm !== 'ecc' ||
+    !hasValidCurveName ||
+    !hasValidPublicPoint
+  ) {
+    const existingEccVersions = Object.values(keyRing.keys || {})
+      .filter((entry) => entry.algorithm === 'ecc')
+      .map((entry) => entry.version || 0);
+    const nextVersion =
+      existingEccVersions.length > 0 ? Math.max(...existingEccVersions) + 1 : 1;
+    const nextId = `ecc-v${nextVersion}`;
+
+    keyRing.keys[nextId] = createManagedKeyEntry('ecc', generateEccKeyPair(), nextVersion);
+    keyRing.active.ecc = nextId;
+    didChange = true;
+  }
+
+  return {
+    keyRing,
+    didChange,
   };
 };
 
@@ -110,7 +189,13 @@ const ensureKeyRing = async () => {
     await writeState('keyring', keyRing);
   }
 
-  cachedKeyRing = keyRing;
+  const migrated = migrateLegacyKeyRing(keyRing);
+  cachedKeyRing = migrated.keyRing;
+
+  if (migrated.didChange) {
+    await writeState('keyring', cachedKeyRing);
+  }
+
   return cachedKeyRing;
 };
 
@@ -185,7 +270,7 @@ const rotateKey = async (algorithm) => {
   const keyRing = await ensureKeyRing();
   const activeRecord = getActiveKeyRecord(algorithm);
   const nextVersion = (activeRecord?.version || 0) + 1;
-  const keyPair = algorithm === 'rsa' ? generateRsaKeyPair(384) : generateElgamalKeyPair();
+  const keyPair = algorithm === 'rsa' ? generateRsaKeyPair(384) : generateEccKeyPair();
   const nextId = `${algorithm}-v${nextVersion}`;
 
   if (activeRecord) {

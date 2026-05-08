@@ -1,5 +1,4 @@
 const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Session = require('../models/Session');
 const {
@@ -7,6 +6,12 @@ const {
   canAccessAppointmentMessages,
 } = require('../services/messageAccessService');
 const { buildSessionFingerprint } = require('../services/sessionSecurityService');
+const { parseCookies } = require('../utils/cookies');
+const {
+  getSessionCookieName,
+  parseSessionCookieValue,
+  hashSessionToken,
+} = require('../services/sessionSecurityService');
 
 let ioInstance = null;
 
@@ -23,38 +28,27 @@ const initializeSocketServer = (httpServer) => {
 
   ioInstance.use(async (socket, next) => {
     try {
-      const token =
-        socket.handshake.auth?.token ||
-        socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, '');
+      const cookies = parseCookies(socket.handshake.headers?.cookie || '');
+      const sessionToken = parseSessionCookieValue(cookies[getSessionCookieName()]);
 
-      if (!token) {
-        return next(new Error('Not authorized. No token provided'));
-      }
-
-      if (!process.env.JWT_SECRET) {
-        return next(new Error('JWT_SECRET is missing in .env file'));
-      }
-
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('-password');
-
-      if (!user) {
-        return next(new Error('User no longer exists'));
-      }
-
-      if (!decoded.sid) {
-        return next(new Error('Session metadata is missing from the token'));
+      if (!sessionToken) {
+        return next(new Error('Not authorized. No active session provided'));
       }
 
       const session = await Session.findOne({
-        sessionId: decoded.sid,
-        user: user._id,
+        sessionTokenHash: hashSessionToken(sessionToken),
         revokedAt: null,
         expiresAt: { $gt: new Date() },
-      });
+      }).populate('user', '-password');
 
       if (!session) {
         return next(new Error('The session is no longer active'));
+      }
+
+      const user = session.user;
+
+      if (!user) {
+        return next(new Error('User no longer exists'));
       }
 
       const fingerprintHash = buildSessionFingerprint({
@@ -69,7 +63,7 @@ const initializeSocketServer = (httpServer) => {
       socket.authSession = session;
       return next();
     } catch (error) {
-      return next(new Error('Invalid or expired token'));
+      return next(new Error('Invalid or expired session'));
     }
   });
 

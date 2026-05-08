@@ -6,7 +6,7 @@ const AuthSessionContext = createContext(null);
 
 export function AuthSessionProvider({ children }) {
   const [snapshot, setSnapshot] = useState(() => getAuthSnapshot());
-  const [isReady, setIsReady] = useState(() => !getAuthSnapshot().token);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     return subscribeAuth(() => {
@@ -18,18 +18,13 @@ export function AuthSessionProvider({ children }) {
     let cancelled = false;
 
     const hydrateSession = async () => {
-      if (!snapshot.token) {
-        setIsReady(true);
-        return;
-      }
-
       setIsReady(false);
 
       try {
-        const response = await getMe(snapshot.token);
+        const response = await getMe();
 
         if (!cancelled) {
-          saveAuth(snapshot.token, response.user);
+          saveAuth(response.user);
         }
       } catch (error) {
         if (!cancelled) {
@@ -47,18 +42,17 @@ export function AuthSessionProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [snapshot.token]);
+  }, []);
 
   const value = useMemo(
     () => ({
-      token: snapshot.token,
       user: snapshot.user,
-      isLoggedIn: Boolean(snapshot.token),
+      isLoggedIn: Boolean(snapshot.user),
       isReady,
       saveAuth,
       logout,
     }),
-    [isReady, snapshot.token, snapshot.user]
+    [isReady, snapshot.user]
   );
 
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;

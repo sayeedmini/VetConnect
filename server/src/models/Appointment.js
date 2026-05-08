@@ -19,11 +19,11 @@ const appointmentSchema = new mongoose.Schema(
       required: true,
     },
     petName: {
-      ...createEncryptedStringField('rsa'),
+      ...createEncryptedStringField('ecc'),
       required: true,
     },
-    petType: createEncryptedStringField('elgamal'),
-    reason: createEncryptedStringField('elgamal'),
+    petType: createEncryptedStringField('ecc'),
+    reason: createEncryptedStringField('ecc'),
     appointmentDate: {
       type: String,
       required: true,
@@ -47,7 +47,7 @@ const appointmentSchema = new mongoose.Schema(
       enum: ['scheduled', 'cancelled', 'completed'],
       default: 'scheduled',
     },
-    notes: createEncryptedStringField('elgamal'),
+    notes: createEncryptedStringField('ecc'),
     cancelledBy: {
       type: String,
       enum: ['petOwner', 'vet', 'admin', null],

@@ -1,49 +1,45 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const LoginChallenge = require('../models/LoginChallenge');
+const PasswordResetToken = require('../models/PasswordResetToken');
 const Session = require('../models/Session');
-const { buildLookupDigest } = require('../security/secureField');
 const {
   normalizeEmail,
   buildUserResponse,
   ensureEncryptedUserRecord,
 } = require('../services/userSecurityService');
+const { buildPasswordResetUrl, sendPasswordResetEmail } = require('../services/emailService');
 const {
   buildSessionFingerprint,
-  createSessionId,
+  createSessionCookieValue,
+  createSessionToken,
+  hashSessionToken,
+  getSessionCookieOptions,
+  getSessionCookieName,
+  getClearedSessionCookieOptions,
 } = require('../services/sessionSecurityService');
 const {
   generateTotpSecret,
   buildOtpAuthUrl,
   verifyTotp,
 } = require('../services/totpService');
+const { replaceBackupCodes, consumeBackupCode } = require('../services/twoFactorRecoveryService');
+const { buildLookupDigest } = require('../security/secureField');
+const { hashPassword, verifyPassword } = require('../security/passwordHasher');
+const { hashToken, randomHex } = require('../security/token');
 
-const ACCESS_TOKEN_TTL = '2h';
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
+const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
+const PASSWORD_MIN_LENGTH = 6;
+const ACCESS_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const PUBLIC_REGISTRATION_ROLES = ['petOwner', 'vet'];
-
-const generateToken = (user, sessionId) =>
-  jwt.sign(
-    {
-      id: user._id,
-      role: user.role,
-      sid: sessionId,
-    },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: ACCESS_TOKEN_TTL,
-    }
-  );
+const PASSWORD_RESET_SUCCESS_MESSAGE =
+  'If an account exists for that email, password reset instructions have been sent.';
 
 const findUserByNormalizedEmail = async (normalizedEmail) => {
   const emailLookup = buildLookupDigest(normalizedEmail);
 
   const user = await User.findOne({
-    $or: [
-      { emailLookup },
-      { email: normalizedEmail },
-    ],
+    $or: [{ emailLookup }, { email: normalizedEmail }],
   });
 
   if (!user) {
@@ -54,9 +50,14 @@ const findUserByNormalizedEmail = async (normalizedEmail) => {
   return user;
 };
 
-const buildAuthenticatorSetupPayload = (user, secret) => {
+const buildAuthenticatorSetupPayload = (user, secret, fallbackEmail = '') => {
   const issuer = process.env.TOTP_ISSUER || 'VetConnect';
-  const accountName = normalizeEmail(user.email);
+  const decryptedEmail = normalizeEmail(user.email);
+  const normalizedFallbackEmail = normalizeEmail(fallbackEmail);
+  const accountName =
+    decryptedEmail && decryptedEmail.includes('@')
+      ? decryptedEmail
+      : normalizedFallbackEmail || 'user@vetconnect.local';
 
   return {
     issuer,
@@ -81,13 +82,35 @@ const createTwoFactorChallenge = async ({ user, challengeType, pendingTwoFactorS
   });
 };
 
-const createAuthenticatedSession = async (req, user, challenge) => {
-  const sessionId = createSessionId();
-  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+const applySessionCookie = (res, sessionToken) => {
+  res.setHeader(
+    'Set-Cookie',
+    require('../utils/cookies').serializeCookie(
+      getSessionCookieName(),
+      createSessionCookieValue(sessionToken),
+      getSessionCookieOptions()
+    )
+  );
+};
+
+const clearSessionCookie = (res) => {
+  res.setHeader(
+    'Set-Cookie',
+    require('../utils/cookies').serializeCookie(
+      getSessionCookieName(),
+      '',
+      getClearedSessionCookieOptions()
+    )
+  );
+};
+
+const createAuthenticatedSession = async (req, res, user, challenge) => {
+  const sessionToken = createSessionToken();
+  const expiresAt = new Date(Date.now() + ACCESS_SESSION_TTL_MS);
 
   await Session.create({
     user: user._id,
-    sessionId,
+    sessionTokenHash: hashSessionToken(sessionToken),
     fingerprintHash: buildSessionFingerprint(req),
     expiresAt,
   });
@@ -97,10 +120,37 @@ const createAuthenticatedSession = async (req, user, challenge) => {
     await challenge.save();
   }
 
+  applySessionCookie(res, sessionToken);
+
   return {
-    token: generateToken(user, sessionId),
     user: buildUserResponse(user),
   };
+};
+
+const createPasswordResetToken = async (user) => {
+  await PasswordResetToken.deleteMany({ user: user._id });
+
+  const token = randomHex(32);
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+
+  await PasswordResetToken.create({
+    user: user._id,
+    tokenHash: hashToken(token),
+    expiresAt,
+  });
+
+  return {
+    token,
+    expiresAt,
+  };
+};
+
+const findValidPasswordResetToken = async (token) => {
+  return PasswordResetToken.findOne({
+    tokenHash: hashToken(token),
+    usedAt: null,
+    expiresAt: { $gt: new Date() },
+  }).populate('user');
 };
 
 const registerUser = async (req, res) => {
@@ -114,10 +164,10 @@ const registerUser = async (req, res) => {
       });
     }
 
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({
+    if (String(password).length < PASSWORD_MIN_LENGTH) {
+      return res.status(400).json({
         success: false,
-        message: 'JWT_SECRET is missing in .env file',
+        message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
       });
     }
 
@@ -137,14 +187,12 @@ const registerUser = async (req, res) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const newUser = await User.create({
       name: trimmedName,
       email: normalizedEmail,
       contactInfo: trimmedContactInfo,
       emailLookup: buildLookupDigest(normalizedEmail),
-      password: hashedPassword,
+      password: hashPassword(password),
       role: selectedRole,
       twoFactorEnabled: false,
       twoFactorMethod: 'totp',
@@ -176,26 +224,10 @@ const loginUser = async (req, res) => {
       });
     }
 
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({
-        success: false,
-        message: 'JWT_SECRET is missing in .env file',
-      });
-    }
-
     const normalizedEmail = normalizeEmail(email);
     const user = await findUserByNormalizedEmail(normalizedEmail);
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password',
-      });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
+    if (!user || !verifyPassword(password, user.password)) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password',
@@ -216,7 +248,7 @@ const loginUser = async (req, res) => {
         message: 'Set up your authenticator app to complete sign-in.',
         challengeId: challenge._id,
         expiresAt: challenge.expiresAt,
-        ...buildAuthenticatorSetupPayload(user, secret),
+        ...buildAuthenticatorSetupPayload(user, secret, normalizedEmail),
       });
     }
 
@@ -306,13 +338,15 @@ const verifyTwoFactor = async (req, res) => {
       user.twoFactorSecret = pendingSecret;
       user.twoFactorEnabled = true;
       user.twoFactorMethod = 'totp';
+      const backupCodes = replaceBackupCodes(user);
       await user.save();
 
-      const session = await createAuthenticatedSession(req, user, challenge);
+      const session = await createAuthenticatedSession(req, res, user, challenge);
 
       return res.status(200).json({
         success: true,
-        message: 'Authenticator app linked successfully',
+        message: 'Authenticator app linked successfully. Save your backup codes in a safe place.',
+        backupCodes,
         ...session,
       });
     }
@@ -323,16 +357,30 @@ const verifyTwoFactor = async (req, res) => {
     });
 
     if (!isValidCode) {
+      const usedBackupCode = await consumeBackupCode(user, code);
+
+      if (usedBackupCode) {
+        const session = await createAuthenticatedSession(req, res, user, challenge);
+
+        return res.status(200).json({
+          success: true,
+          message:
+            'Backup code accepted. You are signed in, and that backup code can no longer be used.',
+          usedBackupCode: true,
+          ...session,
+        });
+      }
+
       challenge.attempts += 1;
       await challenge.save();
 
       return res.status(401).json({
         success: false,
-        message: 'Invalid authenticator code',
+        message: 'Invalid authenticator or backup code',
       });
     }
 
-    const session = await createAuthenticatedSession(req, user, challenge);
+    const session = await createAuthenticatedSession(req, res, user, challenge);
 
     return res.status(200).json({
       success: true,
@@ -343,6 +391,151 @@ const verifyTwoFactor = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Verification failed',
+      error: error.message,
+    });
+  }
+};
+
+const requestPasswordReset = async (req, res) => {
+  try {
+    const normalizedEmail = normalizeEmail(req.body?.email);
+
+    if (!normalizedEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required',
+      });
+    }
+
+    const user = await findUserByNormalizedEmail(normalizedEmail);
+
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: PASSWORD_RESET_SUCCESS_MESSAGE,
+      });
+    }
+
+    const { token } = await createPasswordResetToken(user);
+    let debugResetUrl = '';
+
+    try {
+      const emailResult = await sendPasswordResetEmail({
+        email: normalizeEmail(user.email),
+        name: user.name,
+        token,
+      });
+
+      debugResetUrl = emailResult.resetUrl || '';
+    } catch (emailError) {
+      console.error('Failed to deliver password reset email:', emailError.message);
+      if (process.env.NODE_ENV !== 'production') {
+        debugResetUrl = buildPasswordResetUrl(token);
+      }
+    }
+
+    const response = {
+      success: true,
+      message: PASSWORD_RESET_SUCCESS_MESSAGE,
+    };
+
+    if (process.env.NODE_ENV !== 'production' && debugResetUrl) {
+      response.debugResetUrl = debugResetUrl;
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to start password reset',
+      error: error.message,
+    });
+  }
+};
+
+const validatePasswordResetToken = async (req, res) => {
+  try {
+    const resetToken = await findValidPasswordResetToken(req.params.token);
+
+    if (!resetToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'This password reset link is invalid or has expired',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset token is valid',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to validate password reset token',
+      error: error.message,
+    });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token and new password are required',
+      });
+    }
+
+    if (String(password).length < PASSWORD_MIN_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+      });
+    }
+
+    const resetToken = await findValidPasswordResetToken(token);
+
+    if (!resetToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'This password reset link is invalid or has expired',
+      });
+    }
+
+    const user = await ensureEncryptedUserRecord(resetToken.user);
+    user.password = hashPassword(password);
+    await user.save();
+
+    resetToken.usedAt = new Date();
+    await resetToken.save();
+
+    await PasswordResetToken.deleteMany({
+      user: user._id,
+      _id: { $ne: resetToken._id },
+    });
+    await Session.updateMany(
+      {
+        user: user._id,
+        revokedAt: null,
+      },
+      {
+        $set: {
+          revokedAt: new Date(),
+        },
+      }
+    );
+    await LoginChallenge.deleteMany({ user: user._id, fulfilledAt: null });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password updated successfully. Please sign in with your new password.',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to reset password',
       error: error.message,
     });
   }
@@ -379,6 +572,8 @@ const logoutUser = async (req, res) => {
       await req.authSession.save();
     }
 
+    clearSessionCookie(res);
+
     return res.status(200).json({
       success: true,
       message: 'Logged out successfully',
@@ -396,6 +591,9 @@ module.exports = {
   registerUser,
   loginUser,
   verifyTwoFactor,
+  requestPasswordReset,
+  validatePasswordResetToken,
+  resetPassword,
   logoutUser,
   getMe,
 };

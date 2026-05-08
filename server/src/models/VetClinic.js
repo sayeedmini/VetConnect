@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { createEncryptedStringField } = require('../security/secureField');
 
 const WEEK_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DEFAULT_CLINIC_IMAGE = '/clinic-default.svg';
@@ -11,34 +12,29 @@ const vetClinicSchema = new mongoose.Schema(
       required: true,
     },
     clinicName: {
-      type: String,
+      ...createEncryptedStringField('ecc'),
       required: true,
-      trim: true,
     },
     address: {
-      type: String,
+      ...createEncryptedStringField('ecc'),
       required: true,
-      trim: true,
     },
     contactNumber: {
-      type: String,
+      ...createEncryptedStringField('ecc'),
       required: true,
-      trim: true,
     },
     servicesOffered: {
-      type: [String],
+      type: [createEncryptedStringField('ecc')],
       default: [],
     },
     workingHours: {
       openTime: {
-        type: String,
+        ...createEncryptedStringField('ecc'),
         required: true,
-        trim: true,
       },
       closeTime: {
-        type: String,
+        ...createEncryptedStringField('ecc'),
         required: true,
-        trim: true,
       },
     },
     workingDays: {
@@ -91,8 +87,8 @@ const vetClinicSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
+    toJSON: { virtuals: true, getters: true },
+    toObject: { virtuals: true, getters: true },
   }
 );
 

@@ -1,16 +1,21 @@
 const { hmacSha256 } = require('./hmac');
 const { getActiveKeyPair, getKeyPairById } = require('./keyManagementService');
 const rsa = require('./rsa');
+const ecc = require('./ecc');
 const elgamal = require('./elgamal');
 
 const ENVELOPE_PREFIX = 'enc::';
 
 const getIntegritySecret = () =>
-  process.env.MAC_SECRET || process.env.JWT_SECRET || 'vetconnect-integrity-secret';
+  process.env.MAC_SECRET || process.env.SESSION_SECRET || 'vetconnect-integrity-secret';
 
 const buildCipher = (algorithm) => {
   if (algorithm === 'rsa') {
     return rsa;
+  }
+
+  if (algorithm === 'ecc') {
+    return ecc;
   }
 
   if (algorithm === 'elgamal') {
@@ -83,11 +88,7 @@ const createEncryptedStringField = (algorithm) => ({
       return '';
     }
 
-    try {
-      return decryptEnvelopeValue(value);
-    } catch (error) {
-      return value;
-    }
+    return decryptEnvelopeValue(value);
   },
 });
 

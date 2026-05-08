@@ -24,13 +24,13 @@ const reviewSchema = new mongoose.Schema(
       min: 1,
       max: 5,
     },
-    comment: createEncryptedStringField('elgamal'),
+    comment: createEncryptedStringField('ecc'),
     moderationStatus: {
       type: String,
       enum: ['approved', 'rejected'],
       default: 'approved',
     },
-    adminNote: createEncryptedStringField('elgamal'),
+    adminNote: createEncryptedStringField('ecc'),
   },
   {
     timestamps: true,

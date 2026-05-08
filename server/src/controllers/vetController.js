@@ -106,55 +106,62 @@ const getAllVetClinics = async (req, res) => {
       matchStage.rating = { $gte: ratingFilter };
     }
 
-    if (service) {
-      matchStage.servicesOffered = { $elemMatch: { $regex: service, $options: 'i' } };
-    }
-
     if (ownerId) {
       matchStage.owner = ownerId;
     }
 
-    if (search) {
-      matchStage.$or = [
-        { clinicName: { $regex: search, $options: 'i' } },
-        { address: { $regex: search, $options: 'i' } },
-        { servicesOffered: { $elemMatch: { $regex: search, $options: 'i' } } },
-      ];
-    }
-
-    let clinics;
-
     if (latitude !== null && longitude !== null) {
-      clinics = await VetClinic.aggregate([
-        {
-          $geoNear: {
-            near: {
-              type: 'Point',
-              coordinates: [longitude, latitude],
-            },
-            distanceField: 'distanceInMeters',
-            maxDistance: radiusMeters || undefined,
-            spherical: true,
+      matchStage.location = {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [longitude, latitude],
           },
+          ...(radiusMeters ? { $maxDistance: radiusMeters } : {}),
         },
-        { $match: matchStage },
-        { $sort: { distanceInMeters: 1, createdAt: -1 } },
-      ]);
-    } else {
-      clinics = await VetClinic.find(matchStage)
-        .populate('owner', 'name email role')
-        .sort({ createdAt: -1 });
+      };
     }
+
+    const clinics = await VetClinic.find(matchStage)
+      .populate('owner', 'name email role')
+      .sort(latitude !== null && longitude !== null ? {} : { createdAt: -1 });
+
+    const normalizedSearch = String(search || '').trim().toLowerCase();
+    const normalizedService = String(service || '').trim().toLowerCase();
 
     const enrichedClinics = clinics.map((clinic) => {
       const enriched = addDerivedFields(clinic);
+      const distanceKm =
+        latitude !== null && longitude !== null && enriched.latitude !== null && enriched.longitude !== null
+          ? Number(
+              (
+                Math.sqrt(
+                  (enriched.latitude - latitude) ** 2 + (enriched.longitude - longitude) ** 2
+                ) * 111
+              ).toFixed(2)
+            )
+          : null;
+
       return {
         ...enriched,
-        distanceKm:
-          clinic.distanceInMeters !== undefined
-            ? Number((clinic.distanceInMeters / 1000).toFixed(2))
-            : null,
+        distanceKm,
       };
+    }).filter((clinic) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        String(clinic.clinicName || '').toLowerCase().includes(normalizedSearch) ||
+        String(clinic.address || '').toLowerCase().includes(normalizedSearch) ||
+        (clinic.servicesOffered || []).some((item) =>
+          String(item || '').toLowerCase().includes(normalizedSearch)
+        );
+
+      const matchesService =
+        !normalizedService ||
+        (clinic.servicesOffered || []).some((item) =>
+          String(item || '').toLowerCase().includes(normalizedService)
+        );
+
+      return matchesSearch && matchesService;
     });
 
     res.status(200).json({

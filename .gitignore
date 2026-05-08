@@ -10,4 +10,6 @@ dist/
 build/
 .vscode/
 .DS_Store
-server/storage/
+server/storage/*
+!server/storage/.gitkeep
+!server/storage/.gitignore

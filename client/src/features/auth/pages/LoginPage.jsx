@@ -17,6 +17,8 @@ function LoginPage() {
   const [challenge, setChallenge] = useState(null);
   const [loading, setLoading] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  const [generatedBackupCodes, setGeneratedBackupCodes] = useState([]);
+  const [copiedBackupCodes, setCopiedBackupCodes] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -51,10 +53,10 @@ function LoginPage() {
   }, [challenge?.otpauthUrl]);
 
   useEffect(() => {
-    if (isReady && isLoggedIn) {
+    if (isReady && isLoggedIn && generatedBackupCodes.length === 0) {
       navigate(redirectTo, { replace: true });
     }
-  }, [isLoggedIn, isReady, navigate, redirectTo]);
+  }, [generatedBackupCodes.length, isLoggedIn, isReady, navigate, redirectTo]);
 
   const handleChange = (event) => {
     setFormData((prev) => ({ ...prev, [event.target.name]: event.target.value }));
@@ -70,9 +72,11 @@ function LoginPage() {
       setVerificationCode('');
 
       if (data.requiresTwoFactorSetup) {
-        alert('Scan the QR code with Microsoft Authenticator, then enter the 6-digit code to finish signing in.');
+        alert(
+          'Scan the QR code with Microsoft Authenticator, then enter the 6-digit code to finish signing in.'
+        );
       } else {
-        alert('Open your authenticator app and enter the current 6-digit code.');
+        alert('Open your authenticator app and enter the current code or one of your backup codes.');
       }
     } catch (error) {
       alert(error?.response?.data?.message || 'Login failed');
@@ -91,8 +95,19 @@ function LoginPage() {
         challengeId: challenge?.challengeId,
         code: verificationCode,
       });
-      saveAuth(data.token, data.user);
-      alert('Login successful');
+
+      saveAuth(data.user);
+
+      if (Array.isArray(data.backupCodes) && data.backupCodes.length > 0) {
+        setGeneratedBackupCodes(data.backupCodes);
+        setCopiedBackupCodes(false);
+        setChallenge(null);
+        setVerificationCode('');
+        alert('Authenticator setup complete. Save your backup codes before continuing.');
+        return;
+      }
+
+      alert(data.message || 'Login successful');
       navigate(redirectTo, { replace: true });
     } catch (error) {
       alert(error?.response?.data?.message || 'Verification failed');
@@ -106,6 +121,27 @@ function LoginPage() {
     setChallenge(null);
     setVerificationCode('');
     setQrCodeDataUrl('');
+    setGeneratedBackupCodes([]);
+    setCopiedBackupCodes(false);
+  };
+
+  const handleCopyBackupCodes = async () => {
+    if (!generatedBackupCodes.length || !navigator?.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(generatedBackupCodes.join('\n'));
+      setCopiedBackupCodes(true);
+    } catch (error) {
+      console.error(error);
+      alert('Failed to copy backup codes');
+    }
+  };
+
+  const handleContinueAfterBackupCodes = () => {
+    setGeneratedBackupCodes([]);
+    navigate(redirectTo, { replace: true });
   };
 
   const isSetupFlow = Boolean(challenge?.requiresTwoFactorSetup);
@@ -116,7 +152,9 @@ function LoginPage() {
         <aside className="flex flex-col justify-between bg-[#EAF0FB] px-8 py-10 lg:px-10">
           <div>
             <Link to="/" className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#002045] text-lg font-black text-white">P</div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#002045] text-lg font-black text-white">
+                P
+              </div>
               <div>
                 <div className="font-display text-xl font-extrabold text-[#002045]">VetConnect</div>
                 <div className="text-xs text-slate-500">Smarter pet care access</div>
@@ -124,11 +162,15 @@ function LoginPage() {
             </Link>
 
             <div className="mt-16 max-w-xl">
-              <div className="inline-flex rounded-full bg-teal-100 px-4 py-1.5 text-sm font-semibold text-teal-700 ring-1 ring-teal-200">Welcome back</div>
-              <h1 className="mt-6 font-display text-5xl font-extrabold leading-tight text-[#002045]">Sign in to manage clinics and appointments beautifully.</h1>
+              <div className="inline-flex rounded-full bg-teal-100 px-4 py-1.5 text-sm font-semibold text-teal-700 ring-1 ring-teal-200">
+                Welcome back
+              </div>
+              <h1 className="mt-6 font-display text-5xl font-extrabold leading-tight text-[#002045]">
+                Sign in to manage clinics and appointments beautifully.
+              </h1>
               <p className="mt-6 text-lg leading-8 text-slate-600">
-                Continue with a cleaner dashboard for discovering veterinary clinics, tracking schedules,
-                and keeping every visit organized in one place.
+                Continue with a cleaner dashboard for discovering veterinary clinics, tracking
+                schedules, and keeping every visit organized in one place.
               </p>
             </div>
           </div>
@@ -136,11 +178,16 @@ function LoginPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
             <div className="rounded-[24px] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
               <div className="font-semibold text-[#002045]">Authenticator protected</div>
-              <div className="mt-2 text-sm leading-7 text-slate-600">Use Microsoft Authenticator or any compatible TOTP app for stronger two-step security.</div>
+              <div className="mt-2 text-sm leading-7 text-slate-600">
+                Use Microsoft Authenticator or any compatible TOTP app for stronger two-step
+                security.
+              </div>
             </div>
             <div className="rounded-[24px] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
-              <div className="font-semibold text-[#002045]">Role-based workflow</div>
-              <div className="mt-2 text-sm leading-7 text-slate-600">Pet owners and vets see actions that fit their tasks.</div>
+              <div className="font-semibold text-[#002045]">Recovery ready</div>
+              <div className="mt-2 text-sm leading-7 text-slate-600">
+                Backup codes give you a safe fallback if your authenticator device is unavailable.
+              </div>
             </div>
           </div>
         </aside>
@@ -148,33 +195,89 @@ function LoginPage() {
         <main className="flex items-center justify-center px-6 py-10 lg:px-10">
           <div className="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_22px_60px_rgba(15,23,42,0.06)]">
             <h2 className="font-display text-4xl font-extrabold text-[#002045]">
-              {challenge ? (isSetupFlow ? 'Set up authenticator' : 'Two-step verification') : 'Login'}
+              {generatedBackupCodes.length > 0
+                ? 'Save backup codes'
+                : challenge
+                  ? isSetupFlow
+                    ? 'Set up authenticator'
+                    : 'Two-step verification'
+                  : 'Login'}
             </h2>
             <p className="mt-3 text-slate-600">
-              {challenge
-                ? isSetupFlow
-                  ? 'Scan the QR code in Microsoft Authenticator, then enter the 6-digit code it generates.'
-                  : 'Open your authenticator app and enter the current 6-digit code.'
-                : 'Enter your account details to continue.'}
+              {generatedBackupCodes.length > 0
+                ? 'These backup codes are shown once. Store them somewhere safe before continuing.'
+                : challenge
+                  ? isSetupFlow
+                    ? 'Scan the QR code in Microsoft Authenticator, then enter the 6-digit code it generates.'
+                    : 'Open your authenticator app and enter the current code, or use one of your backup codes.'
+                  : 'Enter your account details to continue.'}
             </p>
 
-            {challenge ? (
+            {generatedBackupCodes.length > 0 ? (
+              <div className="mt-8 space-y-5">
+                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                    One-time backup codes
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {generatedBackupCodes.map((code) => (
+                      <div
+                        key={code}
+                        className="rounded-2xl bg-white px-4 py-3 font-mono text-base font-semibold text-[#002045] ring-1 ring-slate-200"
+                      >
+                        {code}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-4 text-sm leading-7 text-slate-600">
+                    Each code works once. You can regenerate a new set later from your profile.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCopyBackupCodes}
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-base font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                >
+                  {copiedBackupCodes ? 'Backup codes copied' : 'Copy backup codes'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleContinueAfterBackupCodes}
+                  className="w-full rounded-2xl bg-[#002045] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#1A365D]"
+                >
+                  I have saved these codes
+                </button>
+              </div>
+            ) : challenge ? (
               <form onSubmit={handleVerificationSubmit} className="mt-8 space-y-5">
                 {isSetupFlow ? (
                   <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-                    <div className="flex flex-col items-center gap-4">
+                  <div className="flex flex-col items-center gap-4">
                       {qrCodeDataUrl ? (
-                        <img src={qrCodeDataUrl} alt="Authenticator QR code" className="rounded-2xl border border-slate-200 bg-white p-3" />
+                        <img
+                          src={qrCodeDataUrl}
+                          alt="Authenticator QR code"
+                          className="rounded-2xl border border-slate-200 bg-white p-3"
+                        />
                       ) : (
                         <div className="flex h-[220px] w-[220px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm text-slate-500">
                           Generating QR code...
                         </div>
                       )}
                       <div className="w-full rounded-2xl bg-white p-4 ring-1 ring-slate-200">
-                        <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Manual entry key</div>
+                        <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                          Manual entry key
+                        </div>
                         <div className="mt-2 break-all font-mono text-sm font-semibold text-[#002045]">
                           {challenge.manualEntryKey}
                         </div>
+                        <p className="mt-3 text-sm leading-6 text-slate-600">
+                          In Microsoft Authenticator, add a new account and choose the generic
+                          authenticator or other account option before scanning this QR code or
+                          entering the key manually.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -182,18 +285,24 @@ function LoginPage() {
 
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-slate-700">
-                    Verification code
+                    {isSetupFlow ? 'Verification code' : 'Authenticator or backup code'}
                   </span>
                   <input
                     type="text"
-                    inputMode="numeric"
-                    placeholder="Enter the 6-digit code"
+                    inputMode={isSetupFlow ? 'numeric' : 'text'}
+                    placeholder={isSetupFlow ? 'Enter the 6-digit code' : 'Enter a 6-digit or backup code'}
                     value={verificationCode}
                     onChange={(event) => setVerificationCode(event.target.value)}
                     required
                     className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-teal-400 focus:bg-white"
                   />
                 </label>
+
+                {!isSetupFlow ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    Backup codes are one-time recovery codes in the format `ABCD-EFGH`.
+                  </div>
+                ) : null}
 
                 <button
                   type="submit"
@@ -220,7 +329,9 @@ function LoginPage() {
             ) : (
               <form onSubmit={handlePrimarySubmit} className="mt-8 space-y-5">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-slate-700">Email address</span>
+                  <span className="mb-2 block text-sm font-semibold text-slate-700">
+                    Email address
+                  </span>
                   <input
                     name="email"
                     type="email"
@@ -245,7 +356,21 @@ function LoginPage() {
                   />
                 </label>
 
-                <button type="submit" className="w-full rounded-2xl bg-[#002045] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#1A365D] disabled:cursor-not-allowed disabled:opacity-60" disabled={loading}>
+                <div className="flex justify-end">
+                  <Link
+                    to="/forgot-password"
+                    state={{ from: redirectTo, prefillEmail: formData.email }}
+                    className="text-sm font-semibold text-teal-700 hover:text-teal-800"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full rounded-2xl bg-[#002045] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#1A365D] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={loading}
+                >
                   {loading ? 'Checking credentials...' : 'Continue to verification'}
                 </button>
               </form>

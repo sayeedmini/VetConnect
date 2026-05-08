@@ -1,6 +1,25 @@
 const mongoose = require('mongoose');
 const { createEncryptedStringField } = require('../security/secureField');
 
+const postCommentSchema = new mongoose.Schema(
+  {
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    content: {
+      ...createEncryptedStringField('ecc'),
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
+  }
+);
+
 const postSchema = new mongoose.Schema(
   {
     author: {
@@ -9,14 +28,15 @@ const postSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    title: createEncryptedStringField('rsa'),
-    content: createEncryptedStringField('elgamal'),
+    title: createEncryptedStringField('ecc'),
+    content: createEncryptedStringField('ecc'),
     status: {
       type: String,
       enum: ['draft', 'published'],
       default: 'draft',
       index: true,
     },
+    comments: [postCommentSchema],
   },
   {
     timestamps: true,

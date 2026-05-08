@@ -4,7 +4,7 @@ const { hmacSha1Bytes } = require('../security/hmacSha1');
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const TOTP_PERIOD_SECONDS = 30;
 const TOTP_DIGITS = 6;
-const TOTP_WINDOW = 1;
+const TOTP_WINDOW = 2;
 const TOTP_SECRET_BYTES = 20;
 
 const normalizeCode = (value = '') => String(value).replace(/\s+/g, '').trim();
@@ -113,7 +113,8 @@ const verifyTotp = ({ secret, code, timestamp = Date.now(), window = TOTP_WINDOW
 const generateTotpSecret = () => encodeBase32(generateSecretBytes());
 
 const buildOtpAuthUrl = ({ issuer, accountName, secret }) => {
-  const label = `${issuer}:${accountName}`;
+  const encodedIssuer = encodeURIComponent(String(issuer || '').trim());
+  const encodedAccountName = encodeURIComponent(String(accountName || '').trim());
   const params = new URLSearchParams({
     secret,
     issuer,
@@ -122,7 +123,7 @@ const buildOtpAuthUrl = ({ issuer, accountName, secret }) => {
     period: String(TOTP_PERIOD_SECONDS),
   });
 
-  return `otpauth://totp/${encodeURIComponent(label)}?${params.toString()}`;
+  return `otpauth://totp/${encodedIssuer}:${encodedAccountName}?${params.toString()}`;
 };
 
 module.exports = {

@@ -1,16 +1,15 @@
 import axios from 'axios';
 import { logout } from '../features/auth/utils/auth';
 
-const apiClient = axios.create();
+const apiClient = axios.create({
+  withCredentials: true,
+});
 
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error?.response?.status;
-    const authorizationHeader =
-      error?.config?.headers?.Authorization || error?.config?.headers?.authorization;
-
-    if (status === 401 && authorizationHeader) {
+    if (status === 401) {
       logout();
     }
 

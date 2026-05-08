@@ -4,6 +4,8 @@ const {
   buildUserResponse,
   buildLookupDigest,
 } = require('../services/userSecurityService');
+const { replaceBackupCodes } = require('../services/twoFactorRecoveryService');
+const { verifyPassword } = require('../security/passwordHasher');
 
 const getMyProfile = async (req, res) => {
   try {
@@ -84,7 +86,61 @@ const updateMyProfile = async (req, res) => {
   }
 };
 
+const regenerateBackupCodes = async (req, res) => {
+  try {
+    const currentPassword = String(req.body.currentPassword || '');
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (!user.twoFactorSecret) {
+      return res.status(400).json({
+        success: false,
+        message: 'Set up your authenticator app before creating backup codes',
+      });
+    }
+
+    if (!currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is required to regenerate backup codes',
+      });
+    }
+
+    const isPasswordValid = verifyPassword(currentPassword, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect',
+      });
+    }
+
+    const backupCodes = replaceBackupCodes(user);
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'New backup codes generated successfully',
+      backupCodes,
+      data: buildUserResponse(user),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to regenerate backup codes',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getMyProfile,
   updateMyProfile,
+  regenerateBackupCodes,
 };
