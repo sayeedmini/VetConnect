@@ -6,13 +6,26 @@ const {
 const { CURVE: ECC_CURVE, generateKeyPair: generateEccKeyPair, isPointOnCurve } = require('./ecc');
 const SecurityState = require('../models/SecurityState');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 let cachedBootstrap = null;
 let cachedKeyRing = null;
 let initializationPromise = null;
-const STORAGE_DIR = path.join(__dirname, '..', '..', 'storage');
-const BOOTSTRAP_FILE = path.join(STORAGE_DIR, 'bootstrap-keypair.json');
+const KEYSTORE_DIR = path.resolve(
+  process.env.KEYSTORE_DIR || path.join(os.homedir(), '.vetconnect-secure-store')
+);
+const BOOTSTRAP_FILE = path.join(KEYSTORE_DIR, 'bootstrap-keypair.json');
+const SENSITIVE_KEY_FIELDS = new Set([
+  'privatekey',
+  'd',
+  'p',
+  'q',
+  'seed',
+  'secret',
+  'privatescalar',
+  'scalar',
+]);
 
 const writeState = async (kind, payload) => {
   await SecurityState.findOneAndUpdate(
@@ -41,8 +54,8 @@ const ensureBootstrapKeySync = () => {
   return cachedBootstrap;
 };
 
-const ensureStorageDir = async () => {
-  await fs.promises.mkdir(STORAGE_DIR, { recursive: true });
+const ensureKeystoreDir = async () => {
+  await fs.promises.mkdir(KEYSTORE_DIR, { recursive: true });
 };
 
 const readBootstrapFromDisk = async () => {
@@ -59,7 +72,7 @@ const readBootstrapFromDisk = async () => {
 };
 
 const writeBootstrapToDisk = async (payload) => {
-  await ensureStorageDir();
+  await ensureKeystoreDir();
   await fs.promises.writeFile(BOOTSTRAP_FILE, JSON.stringify(payload, null, 2), 'utf8');
 };
 
@@ -103,6 +116,37 @@ const createManagedKeyEntry = (algorithm, keyPair, version) => ({
   createdAt: new Date().toISOString(),
   publicKey: keyPair.publicKey,
   encryptedPrivateKey: encryptPrivateKey(keyPair.privateKey),
+});
+
+const sanitizeKeyValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeKeyValue(entry));
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  return Object.entries(value).reduce((sanitized, [fieldName, fieldValue]) => {
+    const normalizedFieldName = String(fieldName).replace(/\s+/g, '').toLowerCase();
+
+    if (SENSITIVE_KEY_FIELDS.has(normalizedFieldName)) {
+      return sanitized;
+    }
+
+    sanitized[fieldName] = sanitizeKeyValue(fieldValue);
+    return sanitized;
+  }, {});
+};
+
+const sanitizeKeyMetadata = (entry = {}) => ({
+  algorithm: entry.algorithm || null,
+  keyId: entry.keyId || entry.id || null,
+  version: entry.version ?? null,
+  status: entry.status || null,
+  createdAt: entry.createdAt || null,
+  rotatedAt: entry.rotatedAt || null,
+  publicKey: sanitizeKeyValue(entry.publicKey || null),
 });
 
 const createInitialKeyRing = () => {
@@ -285,21 +329,13 @@ const rotateKey = async (algorithm) => {
   keyRing.active[algorithm] = nextId;
   await saveKeyRing(keyRing);
 
-  return getActiveKeyPair(algorithm);
+  return sanitizeKeyMetadata(keyRing.keys[nextId]);
 };
 
 const listManagedKeys = () => {
   ensureKeyManagementReady();
 
-  return Object.values(cachedKeyRing.keys).map((entry) => ({
-    id: entry.id,
-    algorithm: entry.algorithm,
-    version: entry.version,
-    status: entry.status,
-    createdAt: entry.createdAt,
-    rotatedAt: entry.rotatedAt || null,
-    publicKey: entry.publicKey,
-  }));
+  return Object.values(cachedKeyRing.keys).map((entry) => sanitizeKeyMetadata(entry));
 };
 
 module.exports = {
@@ -310,4 +346,7 @@ module.exports = {
   getKeyPairById,
   rotateKey,
   listManagedKeys,
+  sanitizeKeyMetadata,
+  getKeyStoreDir: () => KEYSTORE_DIR,
+  getBootstrapFilePath: () => BOOTSTRAP_FILE,
 };

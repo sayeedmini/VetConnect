@@ -75,12 +75,7 @@ const rotateAdminKey = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: `${algorithm.toUpperCase()} key rotated successfully`,
-      data: {
-        id: nextKey.id,
-        algorithm: nextKey.algorithm,
-        version: nextKey.version,
-        publicKey: nextKey.publicKey,
-      },
+      data: nextKey,
     });
   } catch (error) {
     return res.status(500).json({

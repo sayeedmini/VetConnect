@@ -39,7 +39,7 @@ const initializeSocketServer = (httpServer) => {
         sessionTokenHash: hashSessionToken(sessionToken),
         revokedAt: null,
         expiresAt: { $gt: new Date() },
-      }).populate('user', '-password');
+      }).populate('user', '-password -passwordHash -passwordSalt -passwordIterations -emailLookup');
 
       if (!session) {
         return next(new Error('The session is no longer active'));

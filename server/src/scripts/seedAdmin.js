@@ -3,7 +3,7 @@ require('dotenv').config();
 const connectDB = require('../config/db');
 const { initializeKeyManagement } = require('../security/keyManagementService');
 const User = require('../models/User');
-const { hashPassword } = require('../security/passwordHasher');
+const { buildPasswordFields } = require('../security/passwordHasher');
 const { buildLookupDigest } = require('../security/secureField');
 const { normalizeEmail } = require('../services/userSecurityService');
 
@@ -25,7 +25,7 @@ const run = async () => {
     existingUser.email = email;
     existingUser.contactInfo = contactInfo;
     existingUser.role = 'admin';
-    existingUser.password = hashPassword(password);
+    Object.assign(existingUser, buildPasswordFields(password));
     await existingUser.save();
     console.log(`Updated admin user: ${email}`);
     process.exit(0);
@@ -36,7 +36,7 @@ const run = async () => {
     email,
     contactInfo,
     emailLookup: buildLookupDigest(email),
-    password: hashPassword(password),
+    ...buildPasswordFields(password),
     role: 'admin',
     twoFactorEnabled: false,
     twoFactorMethod: 'totp',

@@ -44,26 +44,111 @@ const derivePasswordHash = ({ password, salt, iterations = ITERATIONS }) => {
 
 const hashPassword = (password) => {
   const salt = randomHex(SALT_BYTES);
+  const iterations = ITERATIONS;
   const hash = derivePasswordHash({
     password,
     salt,
+    iterations,
   });
 
-  return `${PASSWORD_HASH_PREFIX}${ITERATIONS}$${salt}$${hash}`;
+  return {
+    hash,
+    salt,
+    iterations,
+  };
 };
 
-const verifyPassword = (password, storedValue = '') => {
+const parseLegacyPasswordValue = (storedValue = '') => {
   const normalizedStoredValue = String(storedValue || '');
 
   if (!normalizedStoredValue.startsWith(PASSWORD_HASH_PREFIX)) {
-    return false;
+    return null;
   }
 
   const payload = normalizedStoredValue.slice(PASSWORD_HASH_PREFIX.length);
-  const [iterationsValue, salt, expectedHash] = payload.split('$');
+  const [iterationsValue, salt, hash] = payload.split('$');
   const iterations = Number(iterationsValue);
 
-  if (!iterations || !salt || !expectedHash) {
+  if (!iterations || !salt || !hash) {
+    return null;
+  }
+
+  return {
+    hash,
+    salt,
+    iterations,
+  };
+};
+
+const getPasswordRecord = (source = {}) => {
+  if (
+    source &&
+    typeof source.passwordHash === 'string' &&
+    typeof source.passwordSalt === 'string' &&
+    Number(source.passwordIterations) > 0
+  ) {
+    return {
+      hash: source.passwordHash,
+      salt: source.passwordSalt,
+      iterations: Number(source.passwordIterations),
+    };
+  }
+
+  return parseLegacyPasswordValue(source?.password);
+};
+
+const setField = (target, fieldName, value) => {
+  if (target && typeof target.set === 'function') {
+    target.set(fieldName, value);
+    return;
+  }
+
+  target[fieldName] = value;
+};
+
+const upgradeLegacyPasswordRecord = (source = {}) => {
+  const record = getPasswordRecord(source);
+
+  if (!record) {
+    return false;
+  }
+
+  let didChange = false;
+
+  if (source.passwordHash !== record.hash) {
+    setField(source, 'passwordHash', record.hash);
+    didChange = true;
+  }
+
+  if (source.passwordSalt !== record.salt) {
+    setField(source, 'passwordSalt', record.salt);
+    didChange = true;
+  }
+
+  if (Number(source.passwordIterations) !== Number(record.iterations)) {
+    setField(source, 'passwordIterations', Number(record.iterations));
+    didChange = true;
+  }
+
+  if (source.password !== undefined) {
+    setField(source, 'password', undefined);
+    didChange = true;
+  }
+
+  return didChange;
+};
+
+const buildPasswordFields = (password) => {
+  const { hash, salt, iterations } = hashPassword(password);
+  return {
+    passwordHash: hash,
+    passwordSalt: salt,
+    passwordIterations: iterations,
+  };
+};
+
+const verifyPassword = (password, salt = '', expectedHash = '', iterations = ITERATIONS) => {
+  if (!salt || !expectedHash || !Number(iterations)) {
     return false;
   }
 
@@ -80,5 +165,9 @@ module.exports = {
   PASSWORD_HASH_PREFIX,
   ITERATIONS,
   hashPassword,
+  parseLegacyPasswordValue,
+  getPasswordRecord,
+  upgradeLegacyPasswordRecord,
+  buildPasswordFields,
   verifyPassword,
 };

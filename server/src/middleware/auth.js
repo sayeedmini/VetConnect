@@ -38,7 +38,7 @@ const authenticateRequest = async (req, { allowAnonymous = false } = {}) => {
     sessionTokenHash: hashSessionToken(sessionToken),
     revokedAt: null,
     expiresAt: { $gt: new Date() },
-  }).populate('user', '-password');
+  }).populate('user', '-password -passwordHash -passwordSalt -passwordIterations -emailLookup');
 
   if (!session) {
     const error = new Error('The session is no longer active');

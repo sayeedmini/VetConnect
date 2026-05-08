@@ -1,6 +1,9 @@
 const { hmacSha256 } = require('../security/hmac');
 const { randomHex, hashToken } = require('../security/token');
 
+const SESSION_TTL_SECONDS = 2 * 60 * 60;
+const SESSION_TTL_MS = SESSION_TTL_SECONDS * 1000;
+
 const getSessionSecret = () =>
   process.env.SESSION_SECRET || process.env.MAC_SECRET || 'vetconnect-session-secret';
 
@@ -32,7 +35,7 @@ const getSessionCookieOptions = () => ({
   sameSite: 'Lax',
   secure: process.env.NODE_ENV === 'production',
   path: '/',
-  maxAge: 2 * 60 * 60,
+  maxAge: SESSION_TTL_SECONDS,
 });
 
 const getClearedSessionCookieOptions = () => ({
@@ -53,4 +56,6 @@ module.exports = {
   hashSessionToken: hashToken,
   getSessionCookieOptions,
   getClearedSessionCookieOptions,
+  SESSION_TTL_SECONDS,
+  SESSION_TTL_MS,
 };

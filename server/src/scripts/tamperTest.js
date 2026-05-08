@@ -4,7 +4,7 @@ const connectDB = require('../config/db');
 const User = require('../models/User');
 const Post = require('../models/Post');
 const { initializeKeyManagement } = require('../security/keyManagementService');
-const { hashPassword } = require('../security/passwordHasher');
+const { buildPasswordFields } = require('../security/passwordHasher');
 const { buildLookupDigest } = require('../security/secureField');
 const { normalizeEmail } = require('../services/userSecurityService');
 
@@ -54,7 +54,7 @@ const ensureTamperUser = async () => {
       email,
       contactInfo: 'tamper-test-contact',
       emailLookup,
-      password: hashPassword('Tamper123!'),
+      ...buildPasswordFields('Tamper123!'),
       role: 'vet',
       twoFactorEnabled: false,
       twoFactorMethod: 'totp',

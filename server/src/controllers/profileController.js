@@ -5,11 +5,13 @@ const {
   buildLookupDigest,
 } = require('../services/userSecurityService');
 const { replaceBackupCodes } = require('../services/twoFactorRecoveryService');
-const { verifyPassword } = require('../security/passwordHasher');
+const { getPasswordRecord, verifyPassword } = require('../security/passwordHasher');
 
 const getMyProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('-password -emailLookup');
+    const user = await User.findById(req.user._id).select(
+      '-password -passwordHash -passwordSalt -passwordIterations -emailLookup'
+    );
 
     if (!user) {
       return res.status(404).json({
@@ -112,7 +114,15 @@ const regenerateBackupCodes = async (req, res) => {
       });
     }
 
-    const isPasswordValid = verifyPassword(currentPassword, user.password);
+    const passwordRecord = getPasswordRecord(user);
+    const isPasswordValid =
+      Boolean(passwordRecord) &&
+      verifyPassword(
+        currentPassword,
+        passwordRecord.salt,
+        passwordRecord.hash,
+        passwordRecord.iterations
+      );
 
     if (!isPasswordValid) {
       return res.status(401).json({

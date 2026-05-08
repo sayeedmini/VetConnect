@@ -18,9 +18,22 @@ const userSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
-    password: {
+    passwordHash: {
       type: String,
       required: true,
+    },
+    passwordSalt: {
+      type: String,
+      required: true,
+    },
+    passwordIterations: {
+      type: Number,
+      required: true,
+    },
+    password: {
+      type: String,
+      default: undefined,
+      select: false,
     },
     role: {
       type: String,

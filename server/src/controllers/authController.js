@@ -24,13 +24,17 @@ const {
 } = require('../services/totpService');
 const { replaceBackupCodes, consumeBackupCode } = require('../services/twoFactorRecoveryService');
 const { buildLookupDigest } = require('../security/secureField');
-const { hashPassword, verifyPassword } = require('../security/passwordHasher');
+const {
+  buildPasswordFields,
+  getPasswordRecord,
+  verifyPassword,
+} = require('../security/passwordHasher');
 const { hashToken, randomHex } = require('../security/token');
+const { SESSION_TTL_MS } = require('../services/sessionSecurityService');
 
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
 const PASSWORD_MIN_LENGTH = 6;
-const ACCESS_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const PUBLIC_REGISTRATION_ROLES = ['petOwner', 'vet'];
 const PASSWORD_RESET_SUCCESS_MESSAGE =
   'If an account exists for that email, password reset instructions have been sent.';
@@ -40,7 +44,7 @@ const findUserByNormalizedEmail = async (normalizedEmail) => {
 
   const user = await User.findOne({
     $or: [{ emailLookup }, { email: normalizedEmail }],
-  });
+  }).select('+passwordHash +passwordSalt +passwordIterations +password');
 
   if (!user) {
     return null;
@@ -106,7 +110,7 @@ const clearSessionCookie = (res) => {
 
 const createAuthenticatedSession = async (req, res, user, challenge) => {
   const sessionToken = createSessionToken();
-  const expiresAt = new Date(Date.now() + ACCESS_SESSION_TTL_MS);
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
   await Session.create({
     user: user._id,
@@ -192,7 +196,7 @@ const registerUser = async (req, res) => {
       email: normalizedEmail,
       contactInfo: trimmedContactInfo,
       emailLookup: buildLookupDigest(normalizedEmail),
-      password: hashPassword(password),
+      ...buildPasswordFields(password),
       role: selectedRole,
       twoFactorEnabled: false,
       twoFactorMethod: 'totp',
@@ -226,8 +230,18 @@ const loginUser = async (req, res) => {
 
     const normalizedEmail = normalizeEmail(email);
     const user = await findUserByNormalizedEmail(normalizedEmail);
+    const passwordRecord = getPasswordRecord(user);
 
-    if (!user || !verifyPassword(password, user.password)) {
+    if (
+      !user ||
+      !passwordRecord ||
+      !verifyPassword(
+        password,
+        passwordRecord.salt,
+        passwordRecord.hash,
+        passwordRecord.iterations
+      )
+    ) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password',
@@ -505,7 +519,7 @@ const resetPassword = async (req, res) => {
     }
 
     const user = await ensureEncryptedUserRecord(resetToken.user);
-    user.password = hashPassword(password);
+    Object.assign(user, buildPasswordFields(password));
     await user.save();
 
     resetToken.usedAt = new Date();
@@ -543,7 +557,9 @@ const resetPassword = async (req, res) => {
 
 const getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id || req.user.id).select('-password -emailLookup');
+    const user = await User.findById(req.user._id || req.user.id).select(
+      '-password -passwordHash -passwordSalt -passwordIterations -emailLookup'
+    );
 
     if (!user) {
       return res.status(404).json({

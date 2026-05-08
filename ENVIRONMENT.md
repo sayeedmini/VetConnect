@@ -1,15 +1,13 @@
 # Environment Setup
 
-VetConnect uses two separate environment files:
+VetConnect uses:
 
-- `client/.env` for frontend config exposed to the browser
-- `server/.env` for backend-only config and secrets
+- `client/.env` for frontend values exposed to the browser
+- `server/.env` for backend-only values and secrets
 
 ## Client Variables
 
-Only variables prefixed with `VITE_` are available in the Vite frontend bundle.
-
-### `client/.env`
+Only `VITE_` variables are available in the Vite bundle.
 
 ```env
 VITE_API_BASE_URL=http://localhost:5000/api
@@ -19,19 +17,7 @@ VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 VITE_GOOGLE_MAPS_MAP_ID=DEMO_MAP_ID
 ```
 
-### What each client variable does
-
-- `VITE_API_BASE_URL`: Base URL for REST API requests
-- `VITE_SOCKET_URL`: Base URL for Socket.IO client connections
-- `VITE_ENABLE_SOCKET_IO`: Enables realtime messaging in non-dev environments
-- `VITE_GOOGLE_MAPS_API_KEY`: Loads the Google Maps JavaScript API in the browser
-- `VITE_GOOGLE_MAPS_MAP_ID`: Optional custom Google Maps map style ID. `DEMO_MAP_ID` works as a fallback-safe placeholder in this project.
-
 ## Server Variables
-
-These values are read only by the backend and should stay out of the frontend bundle.
-
-### `server/.env`
 
 ```env
 PORT=5000
@@ -39,6 +25,7 @@ MONGO_URI=mongodb+srv://your_db_user:your_db_password@your-cluster.mongodb.net/v
 SESSION_SECRET=replace_with_a_long_random_session_secret
 MAC_SECRET=replace_with_a_long_random_mac_secret
 SESSION_COOKIE_NAME=vetconnect_session
+KEYSTORE_DIR=
 CLIENT_URL=http://localhost:5173
 PASSWORD_RESET_BASE_URL=http://localhost:5173
 ENABLE_SOCKET_IO=true
@@ -55,52 +42,42 @@ SMTP_PASS=your_smtp_password
 SMTP_FROM=VetConnect <no-reply@example.com>
 ```
 
-### What each server variable does
+## Server Variable Notes
 
-- `PORT`: Express server port
-- `MONGO_URI`: MongoDB connection string
-- `SESSION_SECRET`: Protects session fingerprints and signed HTTP-only session cookies
-- `MAC_SECRET`: Protects secure field integrity checks
-- `SESSION_COOKIE_NAME`: Cookie name for the server-side authenticated session
-- `CLIENT_URL`: Allowed frontend origin for CORS and Socket.IO
-- `PASSWORD_RESET_BASE_URL`: Frontend origin used to build password reset links
-- `ENABLE_SOCKET_IO`: Enables the Socket.IO server
-- `TOTP_ISSUER`: Label used for authenticator app setup
-- `ADMIN_EMAIL`: Default seeded admin email for `seed:admin`
-- `ADMIN_PASSWORD`: Default seeded admin password for `seed:admin`
-- `ADMIN_NAME`: Default seeded admin display name
-- `ADMIN_CONTACT`: Default seeded admin contact field
-- `SMTP_HOST`: SMTP server host for password reset email delivery
-- `SMTP_PORT`: SMTP server port
-- `SMTP_SECURE`: Use `true` for implicit TLS SMTP connections such as port 465
-- `SMTP_USER`: SMTP account username
-- `SMTP_PASS`: SMTP account password
-- `SMTP_FROM`: Sender address shown on password reset emails
+- `SESSION_SECRET`: Protects session fingerprinting and session-token hashing support logic.
+- `MAC_SECRET`: Protects encrypted field integrity checks.
+- `SESSION_COOKIE_NAME`: Names the HTTP-only session cookie.
+- `KEYSTORE_DIR`: Optional override for server-local bootstrap key storage. If unset, VetConnect uses `~/.vetconnect-secure-store`.
+- `CLIENT_URL`: Allowed frontend origin for CORS and Socket.IO.
+- `PASSWORD_RESET_BASE_URL`: Frontend origin used to build password reset links.
+- `ADMIN_*`: Used by `npm run seed:admin --prefix server`.
 
-## Rule of Thumb
+## Password Storage
 
-- Put it in `client/.env` if the browser must read it.
-- Put it in `server/.env` if it is a secret or only the backend should read it.
+User credentials are stored with:
 
-## Current Repo Usage
+- `passwordHash`
+- `passwordSalt`
+- `passwordIterations`
 
-### Client-side env usage
+The server no longer uses `User.password` for active password verification. Legacy records are migrated into the new field layout during backend startup.
 
-- `client/src/lib/runtimeConfig.js`
-- `client/src/lib/loadGoogleMaps.js`
+## Session Expiry
 
-### Server-side env usage
+- `SESSION_TTL_SECONDS` is used for cookie `Max-Age`.
+- `SESSION_TTL_MS` is used when writing `Session.expiresAt` to MongoDB.
+- The cookie remains HTTP-only.
+- MongoDB stores `sessionTokenHash`, not the raw token.
 
-- `server/server.js`
-- `server/src/config/db.js`
-- `server/src/controllers/authController.js`
-- `server/src/middleware/auth.js`
-- `server/src/security/secureField.js`
-- `server/src/services/sessionSecurityService.js`
-- `server/src/socket/index.js`
+## Local Key Storage
 
-## Local Development Notes
+- Bootstrap/private key bootstrap material is stored on the server machine, outside the project folder by default.
+- `server/storage` is reserved for `.gitkeep` and `.gitignore`.
+- The keystore directory is created automatically on first run.
 
-- After changing `client/.env`, restart the Vite dev server.
-- After changing `server/.env`, restart the backend server.
-- For deployment, copy these values into your hosting provider's environment settings instead of relying on local `.env` files.
+## Audit Commands
+
+```bash
+npm run test:tamper --prefix server
+npm run test:security-audit
+```

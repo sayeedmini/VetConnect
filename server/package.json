@@ -7,7 +7,8 @@
     "start": "node server.js",
     "migrate:secure-data": "node src/scripts/migrateSensitiveData.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
-    "test:tamper": "node src/scripts/tamperTest.js"
+    "test:tamper": "node src/scripts/tamperTest.js",
+    "test:security-audit": "node src/scripts/securityAudit.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
