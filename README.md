@@ -48,7 +48,7 @@ server/.env
 
 3. Review environment details
 
-- [ENVIRONMENT.md](/C:/Users/Sayeed/Documents/GitHub/VetConnect/ENVIRONMENT.md)
+- [ENVIRONMENT.md](https://github.com/sayeedmini/VetConnect/blob/main/ENVIRONMENT.md)
 
 4. Seed or update the admin account
 
