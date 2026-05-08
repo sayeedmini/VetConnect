@@ -1,7 +1,3 @@
-# CSE447 Compliance Checklist
-
-## Requirement Coverage
-
 1. Login and Registration
    - `server/src/controllers/authController.js`
    - `client/src/features/auth/pages/RegisterPage.jsx`
