@@ -1,4 +1,4 @@
-# CSE447 Compliance Checklist
+# Security Implementation Checklist
 
 ## Requirement Coverage
 
@@ -82,7 +82,7 @@
    - Custom HMAC: `server/src/security/hmac.js`
    - Custom password hashing: `server/src/security/passwordHasher.js`
 
-## Remaining Partial Fixes Now Covered
+## Implemented Security Updates
 
 - Bootstrap key storage defaults outside the project folder.
 - `KEYSTORE_DIR` can override the external bootstrap keystore path.

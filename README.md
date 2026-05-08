@@ -1,6 +1,6 @@
 # VetConnect
 
-VetConnect is a MERN veterinary care platform patched to satisfy the remaining CSE447 partial requirements while keeping the existing project structure and local workflow intact.
+VetConnect is a MERN veterinary care platform for managing veterinary services, appointments, communication, and security-sensitive data within a production-style full-stack application.
 
 ## Security Highlights
 
