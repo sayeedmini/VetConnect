@@ -116,4 +116,4 @@ npm run test:tamper --prefix server
 
 ## Compliance Reference
 
-- [CSE447_COMPLIANCE_CHECKLIST.md](C:/Users/Sayeed/Documents/GitHub/VetConnect/CSE447_COMPLIANCE_CHECKLIST.md)
+- CHECKLIST.md
